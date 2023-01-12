@@ -6,7 +6,7 @@ This package is the accumulation of the following works:
 
 \[1\] SVoRT: Iterative Transformer for Slice-to-Volume Registration in Fetal Brain MRI ([Springer](https://link.springer.com/chapter/10.1007/978-3-031-16446-0_1) | [Arxiv](https://arxiv.org/abs/2206.10802))
 
-\[2\] NeSVoR: Implicit Neural Representation for Slice-to-Volume Reconstruction in MRI ([TechRxiv](https://www.techrxiv.org/articles/preprint/NeSVoR_Implicit_Neural_Representation_for_Slice-to-Volume_Reconstruction_in_MRI/21398868/1))
+\[2\] NeSVoR: Implicit Neural Representation for Slice-to-Volume Reconstruction in MRI ([IEEE](https://ieeexplore.ieee.org/document/10015091)|[TechRxiv](https://www.techrxiv.org/articles/preprint/NeSVoR_Implicit_Neural_Representation_for_Slice-to-Volume_Reconstruction_in_MRI/21398868/1))
 
 <p align="center">
    <img src="./images/recon.gif" align="center" width="600">
@@ -221,12 +221,14 @@ SVoRT
 
 NeSVoR
 ```
-@article{Xu2022,
-author = "Junshen Xu and Daniel Moyer and Borjan Gagoski and Juan Eugenio Iglesias and P. Ellen Grant and Polina Golland and Elfar Adalsteinsson",
-title = "{NeSVoR: Implicit Neural Representation for Slice-to-Volume Reconstruction in MRI}",
-year = "2022",
-month = "11",
-url = "https://www.techrxiv.org/articles/preprint/NeSVoR_Implicit_Neural_Representation_for_Slice-to-Volume_Reconstruction_in_MRI/21398868",
-doi = "10.36227/techrxiv.21398868.v1"
+@article{10015091,
+  author={Xu, Junshen and Moyer, Daniel and Gagoski, Borjan and Iglesias, Juan Eugenio and Ellen Grant, P. and Golland, Polina and Adalsteinsson, Elfar},
+  journal={IEEE Transactions on Medical Imaging}, 
+  title={NeSVoR: Implicit Neural Representation for Slice-to-Volume Reconstruction in MRI}, 
+  year={2023},
+  volume={},
+  number={},
+  pages={1-1},
+  doi={10.1109/TMI.2023.3236216}
 }
 ```
