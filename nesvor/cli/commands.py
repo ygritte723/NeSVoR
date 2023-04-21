@@ -95,6 +95,10 @@ class Reconstruct(Command):
             self.args.inference_batch_size = 8 * self.args.batch_size
         if not self.args.n_inference_samples:
             self.args.n_inference_samples = 2 * self.args.n_samples
+        if self.args.deformable and not self.args.single_precision:
+            logging.warning(
+                "Fitting deformable model with half precision can be unstable! Try single precision instead."
+            )
         self.args.dtype = torch.float32 if self.args.single_precision else torch.float16
 
     def exec(self) -> None:
