@@ -111,7 +111,11 @@ class Reconstruct(Command):
         model, output_slices, mask = train(slices, args)
         self.new_timer("Results saving")
         output_volume = sample_volume(model, mask, args)
-        simulated_slices = sample_slices(model, output_slices, mask, args)
+        simulated_slices = (
+            sample_slices(model, output_slices, mask, args)
+            if getattr(args, "simulated_slices", None)
+            else None
+        )
         outputs(
             {
                 "output_volume": output_volume,
