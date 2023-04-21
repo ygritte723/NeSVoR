@@ -200,15 +200,20 @@ class VVR(Registration):
         self.trans_first = True
 
     def update_level(self, theta, source, target):
-        sigma = [0.5 * (2**self.current_level) / res for res in self.relative_res]
-        source = gaussian_blur(source, sigma, truncated=4.0)
-        target = gaussian_blur(target, sigma, truncated=4.0)
+        sigma_source = [
+            0.5 * (2**self.current_level) / res for res in self.relative_res_source
+        ]
+        source = gaussian_blur(source, sigma_source, truncated=4.0)
+        sigma_target = [
+            0.5 * (2**self.current_level) / res for res in self.relative_res_target
+        ]
+        target = gaussian_blur(target, sigma_target, truncated=4.0)
 
         source = resample(
-            source, self.relative_res[::-1], [2**self.current_level] * 3
+            source, self.relative_res_source[::-1], [2**self.current_level] * 3
         )  # self.resample(source)
         target = resample(
-            target, self.relative_res[::-1], [2**self.current_level] * 3
+            target, self.relative_res_target[::-1], [2**self.current_level] * 3
         )  # self.resample(target)
 
         res_new = self.res * (2**self.current_level)
@@ -254,9 +259,19 @@ class VVR(Registration):
         return warpped.view(1, 1, -1), self._target_flat.view(1, 1, -1)
 
     def prepare(self, theta, source, target, params):
-        res = [params["s_thick"], params["res_s"], params["res_s"]]
-        self.res = min(res)
-        self.relative_res = [r / self.res for r in res]
+        res_source = [
+            params["gap_source"],
+            params["res_y_source"],
+            params["res_x_source"],
+        ]
+        res_target = [
+            params["gap_target"],
+            params["res_y_target"],
+            params["res_x_target"],
+        ]
+        self.res = min(res_source + res_target)
+        self.relative_res_source = [r / self.res for r in res_source]
+        self.relative_res_target = [r / self.res for r in res_target]
 
     def __call__(self, theta, source, target, params, transform_t, trans_first):
         self.theta_t = transform_t

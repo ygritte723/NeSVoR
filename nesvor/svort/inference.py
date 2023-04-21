@@ -244,6 +244,7 @@ def parse_data(dataset, res_s):
         transforms_ori,
         crop_idx,
         np.mean([data.thickness for data in dataset]),
+        [data.gap for data in dataset],
     )
 
 
@@ -305,7 +306,9 @@ def get_transforms_full(transforms_out, transforms_in, transforms_full, crop_idx
     return transforms_svort_full, transforms_stack_full
 
 
-def stack_registration(transforms_list, transform_target, stacks, res_s, s_thick):
+def stack_registration(
+    transforms_list, transform_target, stacks, res_s, gaps, centering
+):
     # stack registration
     device = transform_target.device
 
@@ -317,7 +320,7 @@ def stack_registration(transforms_list, transform_target, stacks, res_s, s_thick
         [t_mean(transform) for transform in transforms]
         for transforms in transforms_list
     ]
-    params = {"res_s": res_s, "s_thick": s_thick}
+
     vvr = VVR(
         num_levels=3,
         num_steps=4,
@@ -333,6 +336,14 @@ def stack_registration(transforms_list, transform_target, stacks, res_s, s_thick
         if j == 0:
             ts_registered.append(t_target)
         else:
+            params = {
+                "res_x_source": res_s,
+                "res_y_source": res_s,
+                "gap_source": gaps[j],
+                "res_x_target": res_s,
+                "res_y_target": res_s,
+                "gap_target": gaps[0],
+            }
             source = stacks[j].squeeze(1)[None, None]
             target = stacks[0].squeeze(1)[None, None]
             ncc_min = float("inf")
@@ -360,8 +371,11 @@ def stack_registration(transforms_list, transform_target, stacks, res_s, s_thick
         t[:, -1] = (
             torch.arange(n_slice, dtype=torch.float32, device=device)
             - (n_slice - 1) / 2
-        ) * s_thick
-        t = t_center.compose(ts_registered[j]).compose(RigidTransform(t))
+        ) * gaps[j]
+        if centering:
+            t = t_center.compose(ts_registered[j]).compose(RigidTransform(t))
+        else:
+            t = ts_registered[j].compose(RigidTransform(t))
         transforms_out.append(t)
 
     return transforms_out
@@ -458,6 +472,7 @@ def run_svort(dataset, model, svort, vvr, force_vvr):
             transforms_ori,
             crop_idx,
             s_thick,
+            gaps,
         ) = parse_data(dataset, res_s)
 
     if svort:
@@ -503,7 +518,8 @@ def run_svort(dataset, model, svort, vvr, force_vvr):
             transforms_stack_full[0] if svort else transforms_ori[0],
             stacks_ori,
             res_s,
-            s_thick,
+            gaps,
+            svort,
         )
         logging.debug("time for stack registration: %f s" % (time.time() - time_start))
 
