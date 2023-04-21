@@ -2,14 +2,17 @@ from argparse import Namespace
 from typing import List
 import torch
 from ..transform import transform_points
-from ..image import Slice, Volume
+from ..image import Slice, Volume, load_volume
 from .models import INR
 from ..utils import resolution2sigma, meshgrid
 
 
 def sample_volume(model: INR, mask: Volume, args: Namespace) -> Volume:
     model.eval()
-    img = mask.resample(args.output_resolution, None)
+    transformation = None
+    if args.volume_mask is not None:
+        mask = load_volume(args.volume_mask, device=args.device)
+    img = mask.resample(args.output_resolution, transformation)
     img.image[img.mask] = sample_points(model, img.xyz_masked, args)
     return img
 

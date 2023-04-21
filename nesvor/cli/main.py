@@ -103,6 +103,42 @@ def build_parser_training() -> argparse.ArgumentParser:
         action="store_true",
         help="Disable slice-level variance.",
     )
+    # deformable net
+    parser.add_argument(
+        "--deformable",
+        action="store_true",
+        help="Enable implicit deformation field.",
+    )
+    parser.add_argument(
+        "--n-features-deform",
+        default=8,
+        type=int,
+        help="Length of the deformation embedding vector.",
+    )
+    parser.add_argument(
+        "--n-features-per-level-deform",
+        default=4,
+        type=int,
+        help="Length of the feature vector at each level (deformation field).",
+    )
+    parser.add_argument(
+        "--level-scale-deform",
+        default=1.3819,
+        type=float,
+        help="Scaling factor between two levels (deformation field).",
+    )
+    parser.add_argument(
+        "--coarsest-resolution-deform",
+        default=32.0,
+        type=float,
+        help="Resolution of the coarsest grid in millimeter (deformation field).",
+    )
+    parser.add_argument(
+        "--finest-resolution-deform",
+        default=8.0,
+        type=float,
+        help="Resolution of the finest grid in millimeter (deformation field).",
+    )
     parser.add_argument(
         "--single-precision",
         action="store_true",
@@ -134,6 +170,12 @@ def build_parser_training() -> argparse.ArgumentParser:
         default=1.0 * 2,
         type=float,
         help="Weight of image regularization.",
+    )
+    parser.add_argument(
+        "--weight-deform",
+        default=0.0,
+        type=float,
+        help="under development",
     )
     parser.add_argument(
         "--delta",
@@ -200,6 +242,7 @@ def build_parser_inputs(
         parser.add_argument(
             "--stack-masks", nargs="+", type=str, help="Paths to masks of input stacks."
         )
+        parser.add_argument("--volume-mask", type=str, help="under development")
     # slices input
     if input_slices:
         parser.add_argument(
