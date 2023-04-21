@@ -102,6 +102,15 @@ class RigidTransform(object):
         else:
             raise Exception("Both data are None!")
 
+    @property
+    def dtype(self):
+        if self._axisangle is not None:
+            return self._axisangle.dtype
+        elif self._matrix is not None:
+            return self._matrix.dtype
+        else:
+            raise Exception("Both data are None!")
+
     @staticmethod
     def cat(transforms: Iterable[RigidTransform]) -> RigidTransform:
         matrixs = [t.matrix(trans_first=True) for t in transforms]
