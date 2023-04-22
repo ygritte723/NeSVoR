@@ -175,7 +175,7 @@ def build_parser_training() -> argparse.ArgumentParser:
         "--weight-deform",
         default=0.0,
         type=float,
-        help="under development",
+        help="Weight of deformation regularization ",
     )
     parser.add_argument(
         "--delta",
