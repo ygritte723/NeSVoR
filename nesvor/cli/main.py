@@ -24,6 +24,9 @@ def update_defaults(parser, **kwargs):
     parser.set_defaults(**kwargs)
 
 
+# parents parsers
+
+
 def build_parser_training() -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("model architecture")
@@ -220,7 +223,7 @@ def build_parser_training() -> argparse.ArgumentParser:
 
 
 def build_parser_inputs(
-    input_stacks=False, input_slices=False, input_model=False
+    input_stacks=False, input_slices=False, input_model=False, segmentation=False
 ) -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("input")
@@ -233,16 +236,20 @@ def build_parser_inputs(
             required=input_stacks == "required",
             help="Paths to the input stacks (NIfTI).",
         )
-        parser.add_argument(
-            "--thicknesses",
-            nargs="+",
-            type=float,
-            help="Slice thickness of each input stack. Use the slice gap in the input stack if not provided.",
-        )
-        parser.add_argument(
-            "--stack-masks", nargs="+", type=str, help="Paths to masks of input stacks."
-        )
-        parser.add_argument("--volume-mask", type=str, help="under development")
+        if not segmentation:
+            parser.add_argument(
+                "--thicknesses",
+                nargs="+",
+                type=float,
+                help="Slice thickness of each input stack. Use the slice gap in the input stack if not provided.",
+            )
+            parser.add_argument(
+                "--stack-masks",
+                nargs="+",
+                type=str,
+                help="Paths to masks of input stacks.",
+            )
+            parser.add_argument("--volume-mask", type=str, help="under development")
     # slices input
     if input_slices:
         parser.add_argument(
@@ -267,6 +274,7 @@ def build_parser_outputs(
     output_slices=False,
     simulate_slices=False,
     output_model=False,
+    output_stack_masks=False,
     **kwargs,
 ) -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
@@ -328,7 +336,16 @@ def build_parser_outputs(
             required=output_model == "required",
             help="Path to save the output model (.pt)",
         )
+    # TODO
     parser.add_argument("--mask-threshold", type=float, default=1.0)
+    if output_stack_masks:
+        parser.add_argument(
+            "--output-stack-masks",
+            type=str,
+            nargs="+",
+            required=output_stack_masks == "required",
+            help="Path to the output folder or list of pathes to the output masks",
+        )
     update_defaults(_parser, **kwargs)
     return _parser
 
@@ -353,6 +370,29 @@ def build_parser_svort() -> argparse.ArgumentParser:
     return _parser
 
 
+def build_parser_segmentation(optional=False) -> argparse.ArgumentParser:
+    _parser = argparse.ArgumentParser(add_help=False)
+    parser = _parser.add_argument_group("segmentation")
+    if optional:
+        parser.add_argument(
+            "--segmentation",
+            action="store_true",
+            help="Perform fetal brain segmentation.",
+        )
+    parser.add_argument(
+        "--batch-size-seg",
+        type=int,
+        default=64,
+        help="batch size for segmentation",
+    )
+    parser.add_argument(
+        "--no-augmentation-seg",
+        action="store_true",
+        help="disable inference data augmentation in segmentation",
+    )
+    return _parser
+
+
 def build_parser_common() -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("common")
@@ -369,21 +409,11 @@ def build_parser_common() -> argparse.ArgumentParser:
     return _parser
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        prog="nesvor",
-        description="NeSVoR: a toolkit for neural slice-to-volume reconstruction",
-        epilog="Run 'nesvor COMMAND --help' for more information on a command.\n\n"
-        + "To learn more about NeSVoR, check out our repo at "
-        + "https://github.com/daviddmc/NeSVoR",
-        formatter_class=Formatter,
-        add_help=False,
-    )
-    parser.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
-    subparsers = parser.add_subparsers(title="commands", metavar=None, dest="command")
+# command parsers
+
+
+def build_command_reconstruct(subparsers) -> None:
     # reconstruct
-    parser_common = build_parser_common()
-    parser_svort = build_parser_svort()
     parser_reconstruct = subparsers.add_parser(
         "reconstruct",
         help="slice-to-volume reconstruction using NeSVoR",
@@ -396,9 +426,9 @@ def main() -> None:
                 simulate_slices=True,
                 output_model=True,
             ),
-            parser_svort,
+            build_parser_svort(),
             build_parser_training(),
-            parser_common,
+            build_parser_common(),
         ],
         formatter_class=FormatterMetavar,
         add_help=False,
@@ -406,6 +436,9 @@ def main() -> None:
     parser_reconstruct.add_argument(
         "-h", "--help", action="help", help=argparse.SUPPRESS
     )
+
+
+def build_command_sample_volume(subparsers) -> None:
     # sample-volume
     parser_sample_volume = subparsers.add_parser(
         "sample-volume",
@@ -418,7 +451,7 @@ def main() -> None:
                 inference_batch_size=1024 * 4 * 8,
                 n_inference_samples=128 * 2 * 2,
             ),
-            parser_common,
+            build_parser_common(),
         ],
         formatter_class=FormatterMetavar,
         add_help=False,
@@ -426,6 +459,9 @@ def main() -> None:
     parser_sample_volume.add_argument(
         "-h", "--help", action="help", help=argparse.SUPPRESS
     )
+
+
+def build_command_sample_slices(subparsers):
     # sample-slices
     parser_sample_slices = subparsers.add_parser(
         "sample-slices",
@@ -434,7 +470,7 @@ def main() -> None:
         parents=[
             build_parser_inputs(input_slices="required", input_model="required"),
             build_parser_outputs(simulate_slices="required"),
-            parser_common,
+            build_parser_common(),
         ],
         formatter_class=FormatterMetavar,
         add_help=False,
@@ -442,6 +478,9 @@ def main() -> None:
     parser_sample_slices.add_argument(
         "-h", "--help", action="help", help=argparse.SUPPRESS
     )
+
+
+def build_command_register(subparsers):
     # register
     parser_register = subparsers.add_parser(
         "register",
@@ -450,13 +489,52 @@ def main() -> None:
         parents=[
             build_parser_inputs(input_stacks="required"),
             build_parser_outputs(output_slices="required"),
-            parser_svort,
-            parser_common,
+            build_parser_svort(),
+            build_parser_common(),
         ],
         formatter_class=FormatterMetavar,
         add_help=False,
     )
     parser_register.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
+
+
+def build_command_segment(subparsers):
+    # segment
+    parser_register = subparsers.add_parser(
+        "segment",
+        help="fetal brain segmentation",
+        description="fetal brain segmentation",
+        parents=[
+            build_parser_inputs(input_stacks="required", segmentation=True),
+            build_parser_outputs(output_stack_masks="required"),
+            build_parser_segmentation(optional=False),
+            build_parser_common(),
+        ],
+        formatter_class=FormatterMetavar,
+        add_help=False,
+    )
+    parser_register.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="nesvor",
+        description="NeSVoR: a toolkit for neural slice-to-volume reconstruction",
+        epilog="Run 'nesvor COMMAND --help' for more information on a command.\n\n"
+        + "To learn more about NeSVoR, check out our repo at "
+        + "https://github.com/daviddmc/NeSVoR",
+        formatter_class=Formatter,
+        add_help=False,
+    )
+    parser.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
+    subparsers = parser.add_subparsers(title="commands", metavar=None, dest="command")
+
+    build_command_reconstruct(subparsers)
+    build_command_sample_volume(subparsers)
+    build_command_sample_slices(subparsers)
+    build_command_register(subparsers)
+    build_command_segment(subparsers)
+
     # parse arguments
     if len(sys.argv) == 1:
         parser.print_help(sys.stdout)
@@ -471,7 +549,8 @@ def main() -> None:
         torch.manual_seed(args.seed)
         np.random.seed(args.seed)
         random.seed(args.seed)
-
+    if args.debug:
+        args.verbose = 2
     setup_logger(args.output_log, args.verbose)
     command_class = "".join(string.capwords(w) for w in args.command.split("-"))
     globals()[command_class](args).main()

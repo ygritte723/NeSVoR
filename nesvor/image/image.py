@@ -247,6 +247,17 @@ class Stack(object):
                 for i in range(len(transformation))
             ]
 
+    def get_mask_volume(self):
+        mask = self.mask.squeeze(1)
+        return Volume(
+            image=mask,
+            mask=mask,
+            transformation=self.transformation.axisangle_mean(),
+            resolution_x=self.resolution_x,
+            resolution_y=self.resolution_y,
+            resolution_z=self.gap,
+        )
+
 
 def save_nii_volume(
     path: str,
@@ -264,6 +275,10 @@ def save_nii_volume(
         affine = affine.detach().cpu().numpy()
     if affine is None:
         affine = np.eye(4)
+    if volume.dtype == bool and isinstance(
+        volume, np.ndarray
+    ):  # bool type is not supported
+        volume = volume.astype(np.int16)
     img = nib.nifti1.Nifti1Image(volume, affine)
     img.header.set_xyzt_units(2)
     img.header.set_qform(affine, code="aligned")

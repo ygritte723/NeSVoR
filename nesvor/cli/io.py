@@ -13,10 +13,12 @@ def inputs(args: Namespace) -> Tuple[Dict, Namespace]:
         for i, f in enumerate(args.input_stacks):
             stack = load_stack(
                 f,
-                args.stack_masks[i] if args.stack_masks is not None else None,
+                args.stack_masks[i]
+                if getattr(args, "stack_masks", None) is not None
+                else None,
                 device=args.device,
             )
-            if args.thicknesses is not None:
+            if getattr(args, "thicknesses", None) is not None:
                 stack.thickness = args.thicknesses[i]
             input_dict["input_stacks"].append(stack)
     if getattr(args, "input_slices", None) is not None:
@@ -48,6 +50,9 @@ def outputs(data: Dict, args: Namespace) -> None:
         save_slices(args.output_slices, data["output_slices"])
     if getattr(args, "simulated_slices", None) and "simulated_slices" in data:
         save_slices(args.simulated_slices, data["simulated_slices"])
+    if getattr(args, "output_stack_masks", None) and "output_stack_masks" in data:
+        for m, p in zip(data["output_stack_masks"], args.output_stack_masks):
+            m.save(p)
 
 
 def load_model(args: Namespace) -> Tuple[INR, Volume, Namespace]:

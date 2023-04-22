@@ -2,6 +2,7 @@ import time
 import argparse
 import logging
 import re
+import os
 import torch
 from typing import List, Optional, Tuple
 from ..image import Stack, Slice
@@ -10,6 +11,7 @@ from ..nesvor.train import train
 from ..nesvor.sample import sample_volume, sample_slices
 from .io import outputs, inputs
 from ..utils import makedirs, log_args
+from ..preprocessing.masking import brain_segmentation
 
 
 class Command(object):
@@ -48,6 +50,15 @@ class Command(object):
     def makedirs(self) -> None:
         keys = ["output_slices", "simulated_slices"]
         makedirs([getattr(self.args, k, None) for k in keys])
+
+        keys = ["output_model", "output_volume"]
+        for k in keys:
+            if getattr(self.args, k, None):
+                makedirs(os.path.dirname(getattr(self.args, k)))
+
+        if getattr(self.args, "output_stack_masks", None):
+            for f in self.args.output_stack_masks:
+                makedirs(os.path.dirname(f))
 
     def main(self) -> None:
         self.check_args()
@@ -95,10 +106,15 @@ class Reconstruct(Command):
             self.args.inference_batch_size = 8 * self.args.batch_size
         if not self.args.n_inference_samples:
             self.args.n_inference_samples = 2 * self.args.n_samples
-        if self.args.deformable and not self.args.single_precision:
-            logging.warning(
-                "Fitting deformable model with half precision can be unstable! Try single precision instead."
-            )
+        if self.args.deformable:
+            if not self.args.single_precision:
+                logging.warning(
+                    "Fitting deformable model with half precision can be unstable! Try single precision instead."
+                )
+            if "svort" in self.args.registration:
+                logging.warning(
+                    "SVoRT can only be used for rigid registration in fetal brain MRI."
+                )
         self.args.dtype = torch.float32 if self.args.single_precision else torch.float16
 
     def exec(self) -> None:
@@ -182,3 +198,42 @@ def register(args: argparse.Namespace, data: List[Stack]) -> List[Slice]:
     force_vvr = args.registration == "svort-stack"
     slices = svort_predict(data, args.device, args.svort_version, svort, vvr, force_vvr)
     return slices
+
+
+class Segment(Command):
+    def check_args(self) -> None:
+        if len(self.args.output_stack_masks) == 1:
+            folder = self.args.output_stack_masks[0]
+            if not (folder.endswith(".nii") or folder.endswith(".nii.gz")):
+                # it is a folder
+                self.args.output_stack_masks = [
+                    os.path.join(folder, "mask_" + os.path.basename(p))
+                    for p in self.args.input_stacks
+                ]
+        assert len(self.args.input_stacks) == len(
+            self.args.output_stack_masks
+        ), "The numbers of input/output files are different!"
+
+    def exec(self) -> None:
+        self.new_timer("Data loading")
+        input_dict, args = inputs(self.args)
+        if not ("input_stacks" in input_dict and input_dict["input_stacks"]):
+            raise ValueError("No data found!")
+        self.new_timer("Segmentation")
+        input_dict["input_stacks"] = segment(args, input_dict["input_stacks"])
+        self.new_timer("Results saving")
+        outputs(
+            {
+                "output_stack_masks": [
+                    stack.get_mask_volume() for stack in input_dict["input_stacks"]
+                ]
+            },
+            args,
+        )
+
+
+def segment(args: argparse.Namespace, data: List[Stack]) -> List[Stack]:
+    data = brain_segmentation.segment(
+        data, args.device, args.batch_size_seg, not args.no_augmentation_seg
+    )
+    return data
