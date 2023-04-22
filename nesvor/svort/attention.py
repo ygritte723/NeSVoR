@@ -237,7 +237,7 @@ class ResNet(nn.Module):
         super().__init__()
         resnet_fn = getattr(tvm, "resnet%d" % n_res)
         model = resnet_fn(
-            pretrained=pretrained,
+            # pretrained=pretrained,
             norm_layer=lambda x: nn.BatchNorm2d(x, track_running_stats=False),
         )
         model.fc = nn.Linear(model.fc.in_features, d_model)
