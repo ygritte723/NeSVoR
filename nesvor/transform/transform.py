@@ -124,6 +124,11 @@ class RigidTransform(object):
         else:
             raise Exception("Both data are None!")
 
+    def axisangle_mean(self) -> RigidTransform:
+        ax = self.axisangle()
+        ax_mean = ax.mean(0, keepdim=True)
+        return RigidTransform(ax_mean)
+
 
 def mat_first2last(mat: torch.Tensor) -> torch.Tensor:
     R = mat[:, :, :3]

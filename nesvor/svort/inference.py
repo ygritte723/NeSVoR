@@ -312,12 +312,9 @@ def stack_registration(
     # stack registration
     device = transform_target.device
 
-    def t_mean(t):
-        return RigidTransform(t.axisangle().mean(0, keepdim=True))
-
-    t_target = t_mean(transform_target)
+    t_target = transform_target.axisangle_mean()
     ts_in = [
-        [t_mean(transform) for transform in transforms]
+        [transform.axisangle_mean() for transform in transforms]
         for transforms in transforms_list
     ]
 
