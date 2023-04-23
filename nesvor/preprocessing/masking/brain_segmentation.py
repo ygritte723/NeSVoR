@@ -4,6 +4,7 @@ See https://github.com/gift-surg/MONAIfbs for more details.
 """
 
 import torch
+from typing import List
 import os
 import tarfile
 import importlib
@@ -13,6 +14,7 @@ import numpy as np
 import logging
 from skimage.morphology import dilation, disk
 from skimage.measure import label
+from ...image import Stack
 from ... import __checkpoint_dir, __monaifbs
 
 
@@ -21,7 +23,7 @@ W_min, W_factor = 7, 64
 H_min, H_factor = 4, 128
 
 
-def get_monaifbs_checkpoint():
+def get_monaifbs_checkpoint() -> str:
     model_dir = __checkpoint_dir
     model_name = "checkpoint_dynUnet_DiceXent.pt"
     if not os.path.exists(os.path.join(model_dir, model_name)):
@@ -99,7 +101,7 @@ def build_monaifbs_net(device):
     return net
 
 
-def batch_infer(inputs, model, batch_size):
+def batch_infer(inputs: torch.Tensor, model, batch_size: int) -> torch.Tensor:
     outputs = torch.empty(
         (inputs.shape[0], 2, inputs.shape[2], inputs.shape[3]),
         dtype=inputs.dtype,
@@ -112,8 +114,17 @@ def batch_infer(inputs, model, batch_size):
     return outputs
 
 
-def _segment(img, res_x, res_y, net, batch_size=64, augmentation=True):
-    # resample to 0.8mm (bilinear)
+def _segment(
+    img: torch.Tensor,
+    res_x: float,
+    res_y: float,
+    net,
+    batch_size: int,
+    augmentation: bool,
+    radius: int,
+    threshold_small: float,
+) -> torch.Tensor:
+    # resample (bilinear)
     shape = img.shape[-2:]
     shape_resampled = (
         int(shape[-2] * res_y / RESOLUTION),
@@ -124,7 +135,7 @@ def _segment(img, res_x, res_y, net, batch_size=64, augmentation=True):
     )
     # normalize
     img = (img - img.mean()) / (img.std() + 1e-8)
-    seg_all = None
+    seg_all: torch.Tensor
     for t in [True, False] if augmentation else [False]:
         for flip_dim in [None, (2,), (3,), (2, 3)] if augmentation else [None]:
             # augmentation
@@ -152,7 +163,7 @@ def _segment(img, res_x, res_y, net, batch_size=64, augmentation=True):
             seg = torch.flip(seg, flip_dim) if flip_dim else seg
             seg = seg.permute(0, 1, 3, 2) if t else seg
             # sum
-            if seg_all is None:
+            if "seg_all" not in locals():
                 seg_all = seg
             else:
                 seg_all = seg_all + seg
@@ -160,20 +171,30 @@ def _segment(img, res_x, res_y, net, batch_size=64, augmentation=True):
     seg_all = torch.nn.functional.interpolate(
         seg_all, size=shape, mode="bilinear", align_corners=True
     )
-    seg_all = torch.argmax(seg_all, 1, keepdim=True).bool().cpu().numpy()
-    for i in range(seg_all.shape[0]):
-        seg = seg_all[i, 0]
-        if seg.sum() > 0:
-            # seg = dilation(seg, selem=disk(3))
-            seg = label(seg)
-            seg_all[i, 0] = seg == np.argmax(np.bincount(seg.flat)[1:]) + 1
-    seg_all = torch.tensor(seg_all, dtype=torch.bool, device=img.device)
+    seg_all_np = torch.argmax(seg_all, 1, keepdim=True).bool().cpu().numpy()
+    for i in range(seg_all_np.shape[0]):
+        seg_np = seg_all_np[i, 0]
+        if seg_np.sum() > 0:
+            if radius:
+                seg_np = dilation(
+                    seg_np, footprint=disk(ceil(2 * radius / (res_x + res_y)))
+                )
+            seg_np = label(seg_np)
+            seg_all_np[i, 0] = seg_np == np.argmax(np.bincount(seg_np.flat)[1:]) + 1
+    seg_all = torch.tensor(seg_all_np, dtype=torch.bool, device=img.device)
     nnz = seg_all.count_nonzero((1, 2, 3))
-    seg_all[nnz < 0.1 * nnz.max()] = 0
+    seg_all[nnz < threshold_small * nnz.max()] = 0
     return seg_all
 
 
-def segment(stacks, device, batch_size, augmentation):
+def segment(
+    stacks: List[Stack],
+    device,
+    batch_size: int,
+    augmentation: bool,
+    radius: int,
+    threshold_small: float,
+) -> List[Stack]:
     net = build_monaifbs_net(device)
     for i, stack in enumerate(stacks):
         logging.info(f"segmenting stack {i}")
@@ -184,5 +205,7 @@ def segment(stacks, device, batch_size, augmentation):
             net,
             batch_size,
             augmentation,
+            radius,
+            threshold_small,
         )
     return stacks

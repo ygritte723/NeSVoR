@@ -121,6 +121,9 @@ class Reconstruct(Command):
         self.new_timer("Data loading")
         input_dict, args = inputs(self.args)
         if "input_stacks" in input_dict and input_dict["input_stacks"]:
+            if self.args.segmentation:
+                self.new_timer("Segmentation")
+                input_dict["input_stacks"] = segment(args, input_dict["input_stacks"])
             self.new_timer("Registration")
             slices = register(args, input_dict["input_stacks"])
         elif "input_slices" in input_dict and input_dict["input_slices"]:
@@ -237,6 +240,11 @@ class Segment(Command):
 
 def segment(args: argparse.Namespace, data: List[Stack]) -> List[Stack]:
     data = brain_segmentation.segment(
-        data, args.device, args.batch_size_seg, not args.no_augmentation_seg
+        data,
+        args.device,
+        args.batch_size_seg,
+        not args.no_augmentation_seg,
+        args.dilation_radius_seg,
+        args.threshold_small_seg,
     )
     return data

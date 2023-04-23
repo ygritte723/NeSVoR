@@ -410,6 +410,18 @@ def build_parser_segmentation(optional=False) -> argparse.ArgumentParser:
         action="store_true",
         help="disable inference data augmentation in segmentation",
     )
+    parser.add_argument(
+        "--dilation-radius-seg",
+        type=float,
+        default=1.0,
+        help="dilation radius for segmentation mask in millimeter.",
+    )
+    parser.add_argument(
+        "--threshold-small-seg",
+        type=float,
+        default=0.1,
+        help="Threshold for removing small segmetation mask (between 0 and 1). A mask will be removed if its area < threshold * max area in the stack.",
+    )
     return _parser
 
 
