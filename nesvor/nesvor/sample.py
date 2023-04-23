@@ -10,8 +10,13 @@ from ..utils import resolution2sigma, meshgrid
 def sample_volume(model: INR, mask: Volume, args: Namespace) -> Volume:
     model.eval()
     transformation = None
-    if args.volume_mask is not None:
-        mask = load_volume(args.volume_mask, device=args.device)
+    if args.sample_mask is not None:
+        mask = load_volume(args.sample_mask, device=args.device)
+    if args.sample_orientation is not None:
+        transformation = load_volume(
+            args.sample_orientation,
+            device=args.device,
+        ).transformation
     img = mask.resample(args.output_resolution, transformation)
     img.image[img.mask] = sample_points(model, img.xyz_masked, args)
     return img
@@ -37,6 +42,8 @@ def sample_points(model: INR, xyz: torch.Tensor, args: Namespace) -> torch.Tenso
 
 
 def sample_slice(model: INR, slice: Slice, mask: Volume, args: Namespace) -> Slice:
+    if args.sample_mask is not None:
+        mask = load_volume(args.sample_mask, device=args.device)
     # clone the slice
     slice_sampled = slice.clone()
     slice_sampled.image = torch.zeros_like(slice_sampled.image)

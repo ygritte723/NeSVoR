@@ -249,7 +249,6 @@ def build_parser_inputs(
                 type=str,
                 help="Paths to masks of input stacks.",
             )
-            parser.add_argument("--volume-mask", type=str, help="under development")
     # slices input
     if input_slices:
         parser.add_argument(
@@ -312,6 +311,11 @@ def build_parser_outputs(
             action="store_true",
             help="Disable psf for generating output volume",
         )
+        parser.add_argument(
+            "--sample-orientation",
+            type=str,
+            help="Path to a nii file. The sampled volume will be reoriented according to the transformatio in this file.",
+        )
     # output slices
     if output_slices:
         parser.add_argument(
@@ -336,8 +340,19 @@ def build_parser_outputs(
             required=output_model == "required",
             help="Path to save the output model (.pt)",
         )
-    # TODO
-    parser.add_argument("--mask-threshold", type=float, default=1.0)
+        parser.add_argument(
+            "--mask-threshold",
+            type=float,
+            default=1.0,
+            help="threshold for output mask smoothing",
+        )
+    if output_volume or simulate_slices:
+        parser.add_argument(
+            "--sample-mask",
+            type=str,
+            help="3D Mask for sampling INR. If not provided, will use a mask esitmated from the input data.",
+        )
+    # output seg masks
     if output_stack_masks:
         parser.add_argument(
             "--output-stack-masks",
