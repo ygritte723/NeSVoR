@@ -340,12 +340,6 @@ def build_parser_outputs(
             required=output_model == "required",
             help="Path to save the output model (.pt)",
         )
-        parser.add_argument(
-            "--mask-threshold",
-            type=float,
-            default=1.0,
-            help="threshold for output mask smoothing",
-        )
     if output_volume or simulate_slices:
         parser.add_argument(
             "--sample-mask",
