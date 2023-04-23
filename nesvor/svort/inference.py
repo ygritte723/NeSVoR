@@ -189,7 +189,7 @@ def run_model_all_stack(
 
 
 def parse_data(
-    dataset: List[Stack], res_s: float
+    dataset: List[Stack], res_s: float, svort: bool
 ) -> Tuple[
     List[torch.Tensor],
     List[torch.Tensor],
@@ -227,7 +227,7 @@ def parse_data(
             j1 += 1
         while s[:, j2].sum() == 0:
             j2 -= 1
-        if (i2 - i1) > 128 or (j2 - j1) > 128:
+        if (i2 - i1) > 128 or (j2 - j1) > 128 and svort:
             logging.warning("ROI in the data is too large for SVoRT")
         pad_margin = 64
         slices = F.pad(
@@ -528,7 +528,7 @@ def run_svort(
             crop_idx,
             s_thick,
             gaps,
-        ) = parse_data(dataset, res_s)
+        ) = parse_data(dataset, res_s, svort)
 
     if svort:
         time_start = time.time()
