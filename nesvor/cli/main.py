@@ -249,6 +249,11 @@ def build_parser_inputs(
                 type=str,
                 help="Paths to masks of input stacks.",
             )
+            parser.add_argument(
+                "--volume-mask",
+                type=str,
+                help="Paths to a 3D mask which will be applied to each input stack.",
+            )
     # slices input
     if input_slices:
         parser.add_argument(

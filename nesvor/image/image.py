@@ -247,7 +247,7 @@ class Stack(object):
                 for i in range(len(transformation))
             ]
 
-    def get_mask_volume(self):
+    def get_mask_volume(self) -> Volume:
         mask = self.mask.squeeze(1)
         return Volume(
             image=mask,
@@ -257,6 +257,12 @@ class Stack(object):
             resolution_y=self.resolution_y,
             resolution_z=self.gap,
         )
+
+    def apply_volume_mask(self, mask: Volume) -> None:
+        for i in range(len(self)):
+            s = self[i]
+            assign_mask = self.mask[i].clone()
+            self.mask[i][assign_mask] = mask.sample_points(s.xyz_masked) > 0
 
 
 def save_nii_volume(

@@ -1,7 +1,7 @@
 import torch
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any, Optional
 from argparse import Namespace
-from ..image import Volume, save_slices, load_slices, load_stack
+from ..image import Volume, save_slices, load_slices, load_stack, load_volume
 from ..nesvor.models import INR
 from ..utils import merge_args
 
@@ -10,6 +10,11 @@ def inputs(args: Namespace) -> Tuple[Dict, Namespace]:
     input_dict: Dict[str, Any] = dict()
     if getattr(args, "input_stacks", None) is not None:
         input_dict["input_stacks"] = []
+        volume_mask: Optional[Volume]
+        if getattr(args, "volume_mask", None):
+            volume_mask = load_volume(args.volume_mask, device=args.device)
+        else:
+            volume_mask = None
         for i, f in enumerate(args.input_stacks):
             stack = load_stack(
                 f,
@@ -20,6 +25,8 @@ def inputs(args: Namespace) -> Tuple[Dict, Namespace]:
             )
             if getattr(args, "thicknesses", None) is not None:
                 stack.thickness = args.thicknesses[i]
+            if volume_mask is not None:
+                stack.apply_volume_mask(volume_mask)
             input_dict["input_stacks"].append(stack)
     if getattr(args, "input_slices", None) is not None:
         input_dict["input_slices"] = load_slices(args.input_slices, args.device)
