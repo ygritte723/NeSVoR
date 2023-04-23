@@ -367,6 +367,11 @@ def build_parser_svort() -> argparse.ArgumentParser:
         choices=["v1", "v2"],
         help="version of SVoRT",
     )
+    parser.add_argument(
+        "--scanner-space",
+        action="store_true",
+        help="Perform registration in the scanner space. Default: register the data to the atlas space when svort or svort-stack are used.",
+    )
     return _parser
 
 
