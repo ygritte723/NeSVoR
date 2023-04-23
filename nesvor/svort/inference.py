@@ -227,7 +227,7 @@ def parse_data(
             j1 += 1
         while s[:, j2].sum() == 0:
             j2 -= 1
-        if (i2 - i1) > 128 or (j2 - j1) > 128 and svort:
+        if ((i2 - i1) > 128 or (j2 - j1) > 128) and svort:
             logging.warning("ROI in the data is too large for SVoRT")
         pad_margin = 64
         slices = F.pad(
