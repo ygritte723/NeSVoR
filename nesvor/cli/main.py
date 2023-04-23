@@ -459,6 +459,7 @@ def build_command_reconstruct(subparsers) -> None:
                 output_model=True,
             ),
             build_parser_svort(),
+            build_parser_segmentation(optional=True),
             build_parser_training(),
             build_parser_common(),
         ],
