@@ -71,10 +71,14 @@ def build_network(**config):
 
 
 def compute_resolution_nlevel(
-    bounding_box, coarsest_resolution, finest_resolution, level_scale
+    bounding_box, coarsest_resolution, finest_resolution, level_scale, spatial_scaling
 ):
     base_resolution = (
-        ((bounding_box[1] - bounding_box[0]).max() / coarsest_resolution)
+        (
+            (bounding_box[1] - bounding_box[0]).max()
+            * spatial_scaling
+            / coarsest_resolution
+        )
         .ceil()
         .int()
         .item()
@@ -83,6 +87,7 @@ def compute_resolution_nlevel(
         (
             torch.log2(
                 (bounding_box[1] - bounding_box[0]).max()
+                * spatial_scaling
                 / finest_resolution
                 / base_resolution
             )
@@ -97,7 +102,9 @@ def compute_resolution_nlevel(
 
 
 class INR(nn.Module):
-    def __init__(self, bounding_box: torch.Tensor, args: Namespace) -> None:
+    def __init__(
+        self, bounding_box: torch.Tensor, args: Namespace, spatial_scaling: float = 1.0
+    ) -> None:
         super().__init__()
         if TYPE_CHECKING:
             self.bounding_box: torch.Tensor
@@ -108,6 +115,7 @@ class INR(nn.Module):
             args.coarsest_resolution,
             args.finest_resolution,
             args.level_scale,
+            spatial_scaling,
         )
 
         self.encoding = build_encoding(
@@ -186,7 +194,9 @@ class INR(nn.Module):
 
 
 class DeformNet(nn.Module):
-    def __init__(self, bounding_box: torch.Tensor, args: Namespace) -> None:
+    def __init__(
+        self, bounding_box: torch.Tensor, args: Namespace, spatial_scaling: float = 1.0
+    ) -> None:
         super().__init__()
         if TYPE_CHECKING:
             self.bounding_box: torch.Tensor
@@ -197,6 +207,7 @@ class DeformNet(nn.Module):
             args.coarsest_resolution_deform,
             args.finest_resolution_deform,
             args.level_scale_deform,
+            spatial_scaling,
         )
         level_scale = args.level_scale_deform
 
@@ -253,9 +264,11 @@ class NeSVoR(nn.Module):
         resolution: torch.Tensor,
         v_mean: float,
         bounding_box: torch.Tensor,
+        spatial_scaling: float,
         args: Namespace,
     ) -> None:
         super().__init__()
+        self.spatial_scaling = spatial_scaling
         self.args = args
         self.n_slices = 0
         self.trans_first = True
@@ -307,9 +320,9 @@ class NeSVoR(nn.Module):
             self.deform_embedding = nn.Embedding(
                 self.n_slices, self.args.n_features_deform
             )
-            self.deform_net = DeformNet(bounding_box, self.args)
+            self.deform_net = DeformNet(bounding_box, self.args, self.spatial_scaling)
         # INR
-        self.inr = INR(bounding_box, self.args)
+        self.inr = INR(bounding_box, self.args, self.spatial_scaling)
         # sigma net
         if not self.args.no_pixel_variance:
             self.sigma_net = build_network(
@@ -408,7 +421,9 @@ class NeSVoR(nn.Module):
         if self.args.deformable:
             losses[D_REG] = deform_reg_autodiff(self.deform_net, xyz_ori, de)
         # image regularization
-        losses[I_REG] = self.image_regularization(density, xyz, self.delta)
+        losses[I_REG] = self.image_regularization(
+            density, xyz * self.spatial_scaling, self.delta
+        )
 
         return losses
 
@@ -446,7 +461,7 @@ class NeSVoR(nn.Module):
         err = y.inv().compose(x).axisangle(trans_first=trans_first)
         loss_R = torch.mean(err[:, :3] ** 2)
         loss_T = torch.mean(err[:, 3:] ** 2)
-        return loss_R + 1e-3 * loss_T
+        return loss_R + 1e-3 * self.spatial_scaling * self.spatial_scaling * loss_T
 
 
 def tv_reg(density: torch.Tensor, xyz: torch.Tensor, delta: float):
