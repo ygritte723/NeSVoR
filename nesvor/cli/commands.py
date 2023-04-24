@@ -133,6 +133,8 @@ class Reconstruct(Command):
         self.new_timer("Reconsturction")
         model, output_slices, mask = train(slices, args)
         self.new_timer("Results saving")
+        if getattr(input_dict, "volume_mask", None):
+            mask = input_dict["volume_mask"]
         output_volume = sample_volume(model, mask, args)
         simulated_slices = (
             sample_slices(model, output_slices, mask, args)

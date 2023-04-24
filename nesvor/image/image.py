@@ -136,7 +136,6 @@ class Volume(Image):
         resolution_new: Optional[Union[float, torch.Tensor]],
         transformation_new: Optional[RigidTransform],
     ) -> Volume:
-
         if transformation_new is None:
             transformation_new = self.transformation
         R = transformation_new.matrix()[0, :3, :3]
@@ -248,10 +247,10 @@ class Stack(object):
             ]
 
     def get_mask_volume(self) -> Volume:
-        mask = self.mask.squeeze(1)
+        mask = self.mask.squeeze(1).clone()
         return Volume(
-            image=mask,
-            mask=mask,
+            image=mask.float(),
+            mask=mask > 0,
             transformation=self.transformation.axisangle_mean(),
             resolution_x=self.resolution_x,
             resolution_y=self.resolution_y,
@@ -263,6 +262,17 @@ class Stack(object):
             s = self[i]
             assign_mask = self.mask[i].clone()
             self.mask[i][assign_mask] = mask.sample_points(s.xyz_masked) > 0
+
+    def clone(self) -> Stack:
+        return Stack(
+            slices=self.slices.clone(),
+            mask=self.mask.clone(),
+            transformation=self.transformation.clone(),
+            resolution_x=self.resolution_x,
+            resolution_y=self.resolution_y,
+            thickness=self.thickness,
+            gap=self.gap,
+        )
 
 
 def save_nii_volume(
