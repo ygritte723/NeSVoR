@@ -254,6 +254,11 @@ def build_parser_inputs(
                 type=str,
                 help="Paths to a 3D mask which will be applied to each input stack.",
             )
+            parser.add_argument(
+                "--stacks-intersection",
+                action="store_true",
+                help="Only reconstruct the region defined by the intersection of input stacks. Will be ignored if --volume-mask is provided.",
+            )
     # slices input
     if input_slices:
         parser.add_argument(
