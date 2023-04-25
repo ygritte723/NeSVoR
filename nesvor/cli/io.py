@@ -63,9 +63,10 @@ def outputs(data: Dict, args: Namespace) -> None:
         save_slices(args.output_slices, data["output_slices"])
     if getattr(args, "simulated_slices", None) and "simulated_slices" in data:
         save_slices(args.simulated_slices, data["simulated_slices"])
-    if getattr(args, "output_stack_masks", None) and "output_stack_masks" in data:
-        for m, p in zip(data["output_stack_masks"], args.output_stack_masks):
-            m.save(p)
+    for k in ["output_stack_masks", "output_corrected_stacks"]:
+        if getattr(args, k, None) and k in data:
+            for m, p in zip(data[k], getattr(args, k)):
+                m.save(p)
 
 
 def load_model(args: Namespace) -> Tuple[INR, Volume, Namespace]:

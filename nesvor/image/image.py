@@ -257,6 +257,16 @@ class Stack(object):
             resolution_z=self.gap,
         )
 
+    def get_volume(self) -> Volume:
+        return Volume(
+            image=self.slices.squeeze(1).clone(),
+            mask=self.mask.squeeze(1).clone() > 0,
+            transformation=self.transformation.axisangle_mean(),
+            resolution_x=self.resolution_x,
+            resolution_y=self.resolution_y,
+            resolution_z=self.gap,
+        )
+
     def apply_volume_mask(self, mask: Volume) -> None:
         for i in range(len(self)):
             s = self[i]

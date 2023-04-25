@@ -223,7 +223,11 @@ def build_parser_training() -> argparse.ArgumentParser:
 
 
 def build_parser_inputs(
-    input_stacks=False, input_slices=False, input_model=False, segmentation=False
+    input_stacks=False,
+    input_slices=False,
+    input_model=False,
+    segmentation=False,
+    bias_field=False,
 ) -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("input")
@@ -237,12 +241,13 @@ def build_parser_inputs(
             help="Paths to the input stacks (NIfTI).",
         )
         if not segmentation:
-            parser.add_argument(
-                "--thicknesses",
-                nargs="+",
-                type=float,
-                help="Slice thickness of each input stack. Use the slice gap in the input stack if not provided.",
-            )
+            if not bias_field:
+                parser.add_argument(
+                    "--thicknesses",
+                    nargs="+",
+                    type=float,
+                    help="Slice thickness of each input stack. Use the slice gap in the input stack if not provided.",
+                )
             parser.add_argument(
                 "--stack-masks",
                 nargs="+",
@@ -257,7 +262,7 @@ def build_parser_inputs(
             parser.add_argument(
                 "--stacks-intersection",
                 action="store_true",
-                help="Only reconstruct the region defined by the intersection of input stacks. Will be ignored if --volume-mask is provided.",
+                help="Only consider the region defined by the intersection of input stacks. Will be ignored if --volume-mask is provided.",
             )
     # slices input
     if input_slices:
@@ -284,6 +289,7 @@ def build_parser_outputs(
     simulate_slices=False,
     output_model=False,
     output_stack_masks=False,
+    output_corrected_stacks=False,
     **kwargs,
 ) -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
@@ -365,6 +371,14 @@ def build_parser_outputs(
             required=output_stack_masks == "required",
             help="Path to the output folder or list of pathes to the output masks",
         )
+    if output_corrected_stacks:
+        parser.add_argument(
+            "--output-corrected-stacks",
+            type=str,
+            nargs="+",
+            required=output_corrected_stacks == "required",
+            help="Path to the output folder or list of pathes to the output corrected stacks",
+        )
     update_defaults(_parser, **kwargs)
     return _parser
 
@@ -425,6 +439,72 @@ def build_parser_segmentation(optional=False) -> argparse.ArgumentParser:
         type=float,
         default=0.1,
         help="Threshold for removing small segmetation mask (between 0 and 1). A mask will be removed if its area < threshold * max area in the stack.",
+    )
+    return _parser
+
+
+def build_parser_bias_field_correction(optional=False) -> argparse.ArgumentParser:
+    _parser = argparse.ArgumentParser(add_help=False)
+    parser = _parser.add_argument_group("bias field correction")
+    if optional:
+        parser.add_argument(
+            "--bias-field-correction",
+            action="store_true",
+            help="Perform bias field correction using the N4 algorithm.",
+        )
+    parser.add_argument(
+        "--n-proc-n4",
+        type=int,
+        default=8,
+        help="number of workers for the N4 algorithm.",
+    )
+    parser.add_argument(
+        "--shrink-factor-n4",
+        type=int,
+        default=2,
+        help="The shrink factor used to reduce the size and complexity of the image.",
+    )
+    parser.add_argument(
+        "--tol-n4",
+        type=float,
+        default=0.001,
+        help="The convergence threshold in N4.",
+    )
+    parser.add_argument(
+        "--spline-order-n4",
+        type=int,
+        default=3,
+        help="The order of B-spline.",
+    )
+    parser.add_argument(
+        "--noise-n4",
+        type=float,
+        default=0.01,
+        help="The noise estimate defining the Wiener filter.",
+    )
+    parser.add_argument(
+        "--n-iter-n4",
+        type=int,
+        default=50,
+        help="The maximum number of iterations specified at each fitting level.",
+    )
+    parser.add_argument(
+        "--n-levels-n4",
+        type=int,
+        default=4,
+        help="The maximum number of iterations specified at each fitting level.",
+    )
+    parser.add_argument(
+        "--n-control-points-n4",
+        type=int,
+        default=4,
+        help="The control point grid size in each dimension. The B-spline mesh size is equal to the number of control points in that dimension minus the spline order.",
+    )
+    parser.add_argument(
+        "--n-bins-n4",
+        type=int,
+        default=200,
+        help="The number of bins in the log input intensity histogram.",
     )
     return _parser
 
@@ -553,6 +633,24 @@ def build_command_segment(subparsers):
     parser_register.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
 
 
+def build_command_correct_bias_field(subparsers):
+    # correct-bias-field
+    parser_register = subparsers.add_parser(
+        "correct-bias-field",
+        help="bias field correction",
+        description="bias field correction",
+        parents=[
+            build_parser_inputs(input_stacks="required", bias_field=True),
+            build_parser_outputs(output_corrected_stacks="required"),
+            build_parser_bias_field_correction(optional=False),
+            build_parser_common(),
+        ],
+        formatter_class=FormatterMetavar,
+        add_help=False,
+    )
+    parser_register.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="nesvor",
@@ -571,6 +669,7 @@ def main() -> None:
     build_command_sample_slices(subparsers)
     build_command_register(subparsers)
     build_command_segment(subparsers)
+    build_command_correct_bias_field(subparsers)
 
     # parse arguments
     if len(sys.argv) == 1:

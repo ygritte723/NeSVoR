@@ -12,6 +12,7 @@ from ..nesvor.sample import sample_volume, sample_slices
 from .io import outputs, inputs
 from ..utils import makedirs, log_args
 from ..preprocessing.masking import brain_segmentation
+from ..preprocessing import bias_field
 
 
 class Command(object):
@@ -56,9 +57,11 @@ class Command(object):
             if getattr(self.args, k, None):
                 makedirs(os.path.dirname(getattr(self.args, k)))
 
-        if getattr(self.args, "output_stack_masks", None):
-            for f in self.args.output_stack_masks:
-                makedirs(os.path.dirname(f))
+        keys = ["output_stack_masks", "output_corrected_stacks"]
+        for k in keys:
+            if getattr(self.args, k, None):
+                for f in getattr(self.args, k):
+                    makedirs(os.path.dirname(f))
 
     def main(self) -> None:
         self.check_args()
@@ -228,14 +231,10 @@ class Segment(Command):
         if not ("input_stacks" in input_dict and input_dict["input_stacks"]):
             raise ValueError("No data found!")
         self.new_timer("Segmentation")
-        input_dict["input_stacks"] = segment(args, input_dict["input_stacks"])
+        seg_stacks = segment(args, input_dict["input_stacks"])
         self.new_timer("Results saving")
         outputs(
-            {
-                "output_stack_masks": [
-                    stack.get_mask_volume() for stack in input_dict["input_stacks"]
-                ]
-            },
+            {"output_stack_masks": [stack.get_mask_volume() for stack in seg_stacks]},
             args,
         )
 
@@ -250,3 +249,43 @@ def segment(args: argparse.Namespace, data: List[Stack]) -> List[Stack]:
         args.threshold_small_seg,
     )
     return data
+
+
+class CorrectBiasField(Command):
+    def check_args(self) -> None:
+        if len(self.args.output_corrected_stacks) == 1:
+            folder = self.args.output_corrected_stacks[0]
+            if not (folder.endswith(".nii") or folder.endswith(".nii.gz")):
+                # it is a folder
+                self.args.output_corrected_stacks = [
+                    os.path.join(folder, "corrected_" + os.path.basename(p))
+                    for p in self.args.input_stacks
+                ]
+        assert len(self.args.input_stacks) == len(
+            self.args.output_corrected_stacks
+        ), "The numbers of input/output files are different!"
+
+    def exec(self) -> None:
+        self.new_timer("Data loading")
+        input_dict, args = inputs(self.args)
+        if not ("input_stacks" in input_dict and input_dict["input_stacks"]):
+            raise ValueError("No data found!")
+        self.new_timer("Segmentation")
+        corrected_stacks = correct_bias_field(args, input_dict["input_stacks"])
+        self.new_timer("Results saving")
+        outputs(
+            {
+                "output_corrected_stacks": [
+                    stack.get_volume() for stack in corrected_stacks
+                ]
+            },
+            args,
+        )
+
+
+def correct_bias_field(args: argparse.Namespace, data: List[Stack]) -> List[Stack]:
+    n4_params = {}
+    for k in vars(args):
+        if k.endswith("_n4"):
+            n4_params[k] = getattr(args, k)
+    return bias_field.n4_bias_field_correction(data, n4_params)
