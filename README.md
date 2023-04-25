@@ -110,8 +110,9 @@ You may follow this [guide](https://docs.nvidia.com/datacenter/cloud-native/cont
 ```
 docker pull junshenxu/nesvor:v0.2.0
 docker run  --gpus '"device=0"' -it junshenxu/nesvor:v0.2.0
+nesvor -h
 ```
-Note: our image was built with CUDA 11.6.
+Note: our image was built with CUDA 11.7.
 
 ## Quick Start
 
