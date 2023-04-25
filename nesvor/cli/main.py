@@ -170,13 +170,13 @@ def build_parser_training() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--weight-image",
-        default=1.0 * 2,
+        default=1.0,
         type=float,
         help="Weight of image regularization.",
     )
     parser.add_argument(
         "--weight-deform",
-        default=0.0,
+        default=0.1,
         type=float,
         help="Weight of deformation regularization ",
     )
