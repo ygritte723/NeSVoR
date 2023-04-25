@@ -512,6 +512,7 @@ def build_parser_bias_field_correction(optional=False) -> argparse.ArgumentParse
 def build_parser_common() -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("common")
+    parser.add_argument("--device", type=int, default=0, help="Id of the GPU to use.")
     parser.add_argument(
         "--verbose",
         type=int,
@@ -544,6 +545,7 @@ def build_command_reconstruct(subparsers) -> None:
             ),
             build_parser_svort(),
             build_parser_segmentation(optional=True),
+            build_parser_bias_field_correction(optional=True),
             build_parser_training(),
             build_parser_common(),
         ],
@@ -679,8 +681,7 @@ def main() -> None:
     if len(sys.argv) == 2:
         locals()["parser_" + args.command.replace("-", "_")].print_help(sys.stdout)
         return
-    device = torch.device(0)
-    args.device = device
+    args.device = torch.device(args.device)
     if args.seed is not None:
         torch.manual_seed(args.seed)
         np.random.seed(args.seed)

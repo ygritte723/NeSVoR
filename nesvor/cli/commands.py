@@ -127,6 +127,11 @@ class Reconstruct(Command):
             if self.args.segmentation:
                 self.new_timer("Segmentation")
                 input_dict["input_stacks"] = segment(args, input_dict["input_stacks"])
+            if self.args.bias_field_correction:
+                self.new_timer("Bias Field Correction")
+                input_dict["input_stacks"] = correct_bias_field(
+                    args, input_dict["input_stacks"]
+                )
             self.new_timer("Registration")
             slices = register(args, input_dict["input_stacks"])
         elif "input_slices" in input_dict and input_dict["input_slices"]:

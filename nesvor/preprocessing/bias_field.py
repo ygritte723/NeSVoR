@@ -39,7 +39,7 @@ def n4_bias_field_correction(
         out_stack = stack.clone()
         out_stack.slices = torch.tensor(
             result.get(), dtype=stack.slices.dtype, device=stack.slices.device
-        )
+        ).unsqueeze(1)
         out_stacks.append(out_stack)
     return out_stacks
 
