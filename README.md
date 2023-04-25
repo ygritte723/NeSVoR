@@ -20,13 +20,15 @@ This package is the accumulation of the following works:
 - [Overview](#overview)
 - [Installation](#installation)
   - [From Source](#from-source)
+  <!--
     - [Prerequisites](#prerequisites)
     - [Get the NeSVoR Source](#get-the-nesvor-source)
     - [Install Dependencies](#install-dependencies)
-    - [Install NeSVoR](#install-nesvor)
+    - [Install NeSVoR](#install-nesvor)-->
   - [Docker Image](#docker-image)
+  <!--
     - [Install Docker and NVIDIA Container Toolkit](#install-docker-and-nvidia-container-toolkit)
-    - [Download and Run NeSVoR Image](#download-and-run-nesvor-image)
+    - [Download and Run NeSVoR Image](#download-and-run-nesvor-image)-->
 - [Quick Start](#quick-start)
   - [Fetal Brain Reconstruction](#fetal-brain-reconstruction)
   - [Fetal Body/Uterus Reconstruction](#fetal-bodyuterus-reconstruction)
