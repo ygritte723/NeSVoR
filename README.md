@@ -27,6 +27,9 @@ This package is the accumulation of the following works:
   - [Docker Image](#docker-image)
     - [Install Docker and NVIDIA Container Toolkit](#install-docker-and-nvidia-container-toolkit)
     - [Download and Run NeSVoR Image](#download-and-run-nesvor-image)
+- [Quick Start](#quick-start)
+  - [Fetal Brain Reconstruction](#fetal-brain-reconstruction)
+  - [Fetal Body/Uterus Reconstruction](#fetal-bodyuterus-reconstruction)
 - [Usage](#usage)
   - [Reconstruction](#reconstruction)
   - [Registration](#registration)
@@ -138,7 +141,7 @@ This is an example for deformable NeSVoR which consists of the following steps:
 
 1. Create an ROI based on the intersection of all input stacks.
 3. Perform stack-to-stack registration.
-3. Reconstruct a 3D volume using Deformable NeSVoR.
+3. Reconstruct a 3D volume using Deformable NeSVoR (`--deformable`).
 
 ```
 nesvor reconstruct \
