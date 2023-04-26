@@ -395,7 +395,7 @@ def build_parser_svort() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--svort-version",
-        default="v1",
+        default="v2",
         type=str,
         choices=["v1", "v2"],
         help="version of SVoRT",
