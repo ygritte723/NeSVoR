@@ -95,14 +95,8 @@ class Reconstruct(Command):
                 self.args.thicknesses = None
         else:
             # use input stacks
-            if self.args.stack_masks is not None:
-                assert len(self.args.stack_masks) == len(
-                    self.args.input_stacks
-                ), "The numbers of stack masks and input stacks are different!"
-            if self.args.thicknesses is not None:
-                assert len(self.args.thicknesses) == len(
-                    self.args.input_stacks
-                ), "The numbers of thicknesses and input stacks are different!"
+            check_len(self.args, "input_stacks", "stack_masks")
+            check_len(self.args, "input_stacks", "thicknesses")
         if self.args.output_volume is None and self.args.output_model is None:
             logging.warning("Both <output-volume> and <output-model> are not provided.")
         if not self.args.inference_batch_size:
@@ -118,6 +112,7 @@ class Reconstruct(Command):
                 logging.warning(
                     "SVoRT can only be used for rigid registration in fetal brain MRI."
                 )
+        svort_v1_warning(self.args)
         self.args.dtype = torch.float32 if self.args.single_precision else torch.float16
 
     def exec(self) -> None:
@@ -185,14 +180,9 @@ class SampleSlices(Command):
 
 class Register(Command):
     def check_args(self) -> None:
-        if self.args.stack_masks is not None:
-            assert len(self.args.stack_masks) == len(
-                self.args.input_stacks
-            ), "The numbers of stack masks and input stacks are different!"
-        if self.args.thicknesses is not None:
-            assert len(self.args.thicknesses) == len(
-                self.args.input_stacks
-            ), "The numbers of thicknesses and input stacks are different!"
+        check_len(self.args, "input_stacks", "stack_masks")
+        check_len(self.args, "input_stacks", "thicknesses")
+        svort_v1_warning(self.args)
 
     def exec(self) -> None:
         self.new_timer("Data loading")
@@ -226,9 +216,7 @@ class Segment(Command):
                     os.path.join(folder, "mask_" + os.path.basename(p))
                     for p in self.args.input_stacks
                 ]
-        assert len(self.args.input_stacks) == len(
-            self.args.output_stack_masks
-        ), "The numbers of input/output files are different!"
+        check_len(self.args, "input_stacks", "output_stack_masks")
 
     def exec(self) -> None:
         self.new_timer("Data loading")
@@ -266,9 +254,7 @@ class CorrectBiasField(Command):
                     os.path.join(folder, "corrected_" + os.path.basename(p))
                     for p in self.args.input_stacks
                 ]
-        assert len(self.args.input_stacks) == len(
-            self.args.output_corrected_stacks
-        ), "The numbers of input/output files are different!"
+        check_len(self.args, "input_stacks", "output_corrected_stacks")
 
     def exec(self) -> None:
         self.new_timer("Data loading")
@@ -294,3 +280,20 @@ def correct_bias_field(args: argparse.Namespace, data: List[Stack]) -> List[Stac
         if k.endswith("_n4"):
             n4_params[k] = getattr(args, k)
     return bias_field.n4_bias_field_correction(data, n4_params)
+
+
+"""warnings and checks"""
+
+
+def svort_v1_warning(args):
+    if "svort" in args.registration and args.svort_version == "v1":
+        logging.warning(
+            "SVoRT v1 model use a different altas space. If you want to register the image to in the CRL fetal brain atlas space, try the v2 model."
+        )
+
+
+def check_len(args, k1, k2):
+    if getattr(args, k1, None) and getattr(args, k2, None):
+        assert len(getattr(args, k1)) == len(
+            getattr(args, k2)
+        ), "The length of {k1} and {k2} are different!"
