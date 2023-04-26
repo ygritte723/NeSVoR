@@ -134,6 +134,7 @@ nesvor reconstruct \
 --output-volume volume.nii.gz \
 --output-resolution 0.8 \
 --registration svort \
+--svort-version v2\
 --segmentation \
 --bias-field-correction
 ```
