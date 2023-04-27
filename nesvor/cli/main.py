@@ -290,6 +290,7 @@ def build_parser_outputs(
     output_model=False,
     output_stack_masks=False,
     output_corrected_stacks=False,
+    output_json=True,
     **kwargs,
 ) -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
@@ -378,6 +379,12 @@ def build_parser_outputs(
             nargs="+",
             required=output_corrected_stacks == "required",
             help="Path to the output folder or list of pathes to the output corrected stacks",
+        )
+    if output_json:
+        parser.add_argument(
+            "--output-json",
+            type=str,
+            help="Path to a json file for saving the inputs and results of the command.",
         )
     update_defaults(_parser, **kwargs)
     return _parser
@@ -687,6 +694,7 @@ def build_command_assess(subparsers):
         description="quality assessment of input stacks",
         parents=[
             build_parser_inputs(input_stacks="required", bias_field=True),
+            build_parser_outputs(),
             build_parser_assessment(metric="ncc"),
             build_parser_common(),
         ],

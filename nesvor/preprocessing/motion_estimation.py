@@ -26,7 +26,7 @@ def _rank(mat: torch.Tensor, threshold: float, rank_only: bool) -> float:
         if norm2[r] > (1 - threshold * threshold) * norm2_all:
             e = torch.sqrt((norm2_all - norm2[r]) / norm2_all).item()
             break
-    return (r + 1) / R if rank_only else e * (r + 1) / R / threshold
+    return float((r + 1) / R if rank_only else e * (r + 1) / R / threshold)
 
 
 def ncc(stacks: List[Stack]) -> List[float]:
@@ -45,4 +45,4 @@ def _ncc(slices: torch.Tensor) -> float:
     ncc = ncc_loss(slices1, slices2, mask, win=None, reduction="none")
     ncc_weight = mask.sum((1, 2, 3))
     ncc_weight = ncc_weight.view(ncc.shape)
-    return -((ncc * ncc_weight).sum() / ncc_weight.sum()).item()
+    return float(-((ncc * ncc_weight).sum() / ncc_weight.sum()).item())

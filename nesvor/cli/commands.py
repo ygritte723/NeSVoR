@@ -5,7 +5,7 @@ import re
 import os
 import torch
 import numpy as np
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 from ..image import Stack, Slice
 from ..svort.inference import svort_predict
 from ..nesvor.train import train
@@ -294,12 +294,17 @@ class Assess(Command):
         self.new_timer("Data loading")
         input_dict, args = inputs(self.args)
         self.new_timer("Assessment")
-        assess(self.args, input_dict["input_stacks"], True)
+        _, results = assess(self.args, input_dict["input_stacks"], True)
+        if args.output_json:
+            self.new_timer("Results saving")
+            args.output_assessment = results
+            outputs({}, args)
+            log_result("Assessment results saved to %s" % args.output_json)
 
 
 def assess(
     args: argparse.Namespace, stacks: List[Stack], print_results=False
-) -> List[Stack]:
+) -> Tuple[List[Stack], List[Dict[str, Any]]]:
     metric = args.metric
     if metric == "ncc":
         scores = motion_estimation.ncc(stacks)
@@ -308,16 +313,24 @@ def assess(
         scores = motion_estimation.rank(stacks)
         descending = False
     elif metric == "volume":
-        scores = [int(stack.mask.float().sum().item()) for stack in stacks]
+        scores = [
+            int(
+                stack.mask.float().sum().item()
+                * stack.resolution_x
+                * stack.resolution_y
+                * stack.gap
+            )
+            for stack in stacks
+        ]
         descending = True
 
     n_keep = len(stacks)
     if args.filter_method == "top":
-        n_keep = int(args.cutoff)
+        n_keep = min(n_keep, int(args.cutoff))
     elif args.filter_method == "bottom":
-        n_keep = len(stacks) - int(args.cutoff)
+        n_keep = max(0, len(stacks) - int(args.cutoff))
     elif args.filter_method == "percentage":
-        n_keep = len(stacks) - int(len(stacks) * args.cutoff)
+        n_keep = len(stacks) - int(len(stacks) * min(max(0, args.cutoff), 1))
     elif args.filter_method == "threshold":
         if descending:
             n_keep = sum(score >= args.cutoff for score in scores)
@@ -329,26 +342,41 @@ def assess(
         raise ValueError("unknown filter method")
 
     sorter = np.argsort(-np.array(scores) if descending else scores)
-    if print_results:
-        inv = np.empty(sorter.size, dtype=np.intp)
-        inv[sorter] = np.arange(sorter.size, dtype=np.intp)
-        template = "\n%15s %15s %15s %15s"
-        result = "stack assessment results (metric = %s):" % metric + template % (
-            "stack",
-            "score " + "(" + ("\u2191" if descending else "\u2193") + ")",
-            "rank",
-            "",
-        )
-        for i, (score, rank) in enumerate(zip(scores, inv)):
-            result += template % (
-                i,
-                ("%1.4f" if isinstance(score, float) else "%d") % score,
-                rank,
-                "excluded" if rank >= n_keep else "",
-            )
-        log_result(result)
+    inv = np.empty(sorter.size, dtype=np.intp)
+    inv[sorter] = np.arange(sorter.size, dtype=np.intp)
 
-    return [stacks[i] for i in sorter[:n_keep]]
+    results = []
+    for i, (score, rank) in enumerate(zip(scores, inv)):
+        results.append(
+            dict(
+                input_stack=i,
+                score=score,
+                rank=int(rank),
+                excluded=bool(rank >= n_keep),
+            )
+        )
+
+    template = "\n%15s %15s %15s %15s"
+    result_log = "stack assessment results (metric = %s):" % metric + template % (
+        "stack",
+        "score " + "(" + ("\u2191" if descending else "\u2193") + ")",
+        "rank",
+        "",
+    )
+    for i, item in enumerate(results):
+        result_log += template % (
+            item["input_stack"],
+            ("%1.4f" if isinstance(item["score"], float) else "%d") % item["score"],
+            item["rank"],
+            "excluded" if item["excluded"] else "",
+        )
+    if print_results:
+        log_result(result_log)
+    else:
+        logging.info(result_log)
+
+    filtered_stacks = [stacks[i] for i in sorter[:n_keep]]
+    return filtered_stacks, results
 
 
 """warnings and checks"""

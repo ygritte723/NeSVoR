@@ -1,6 +1,7 @@
 import torch
 from typing import Dict, Tuple, Any, Optional
 from argparse import Namespace
+import json
 from ..image import Volume, save_slices, load_slices, load_stack, load_volume
 from ..nesvor.models import INR
 from ..utils import merge_args
@@ -67,6 +68,11 @@ def outputs(data: Dict, args: Namespace) -> None:
         if getattr(args, k, None) and k in data:
             for m, p in zip(data[k], getattr(args, k)):
                 m.save(p)
+    if getattr(args, "output_json", None):
+        d = vars(args)
+        d["device"] = int(str(d["device"]).split(":")[-1])
+        with open(args.output_json, "w") as outfile:
+            outfile.write(json.dumps(d, indent=4))
 
 
 def load_model(args: Namespace) -> Tuple[INR, Volume, Namespace]:
