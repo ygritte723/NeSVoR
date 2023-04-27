@@ -4,15 +4,16 @@ import logging
 import re
 import os
 import torch
+import numpy as np
 from typing import List, Optional, Tuple
 from ..image import Stack, Slice
 from ..svort.inference import svort_predict
 from ..nesvor.train import train
 from ..nesvor.sample import sample_volume, sample_slices
 from .io import outputs, inputs
-from ..utils import makedirs, log_args
+from ..utils import makedirs, log_args, log_result
 from ..preprocessing.masking import brain_segmentation
-from ..preprocessing import bias_field
+from ..preprocessing import bias_field, motion_estimation
 
 
 class Command(object):
@@ -261,7 +262,7 @@ class CorrectBiasField(Command):
         input_dict, args = inputs(self.args)
         if not ("input_stacks" in input_dict and input_dict["input_stacks"]):
             raise ValueError("No data found!")
-        self.new_timer("Segmentation")
+        self.new_timer("Bias field correction")
         corrected_stacks = correct_bias_field(args, input_dict["input_stacks"])
         self.new_timer("Results saving")
         outputs(
@@ -274,12 +275,80 @@ class CorrectBiasField(Command):
         )
 
 
-def correct_bias_field(args: argparse.Namespace, data: List[Stack]) -> List[Stack]:
+def correct_bias_field(args: argparse.Namespace, stacks: List[Stack]) -> List[Stack]:
     n4_params = {}
     for k in vars(args):
         if k.endswith("_n4"):
             n4_params[k] = getattr(args, k)
-    return bias_field.n4_bias_field_correction(data, n4_params)
+    return bias_field.n4_bias_field_correction(stacks, n4_params)
+
+
+class Assess(Command):
+    def check_args(self) -> None:
+        if self.args.filter_method != "none" and self.args.cutoff is None:
+            raise ValueError("--cutoff for filtering is not provided!")
+        if self.args.metric == "none":
+            raise ValueError("--metric should not be none is `assess` command.")
+
+    def exec(self) -> None:
+        self.new_timer("Data loading")
+        input_dict, args = inputs(self.args)
+        self.new_timer("Assessment")
+        assess(self.args, input_dict["input_stacks"], True)
+
+
+def assess(
+    args: argparse.Namespace, stacks: List[Stack], print_results=False
+) -> List[Stack]:
+    metric = args.metric
+    if metric == "ncc":
+        scores = motion_estimation.ncc(stacks)
+        descending = True
+    elif metric == "matrix-rank":
+        scores = motion_estimation.rank(stacks)
+        descending = False
+    elif metric == "volume":
+        scores = [int(stack.mask.float().sum().item()) for stack in stacks]
+        descending = True
+
+    n_keep = len(stacks)
+    if args.filter_method == "top":
+        n_keep = int(args.cutoff)
+    elif args.filter_method == "bottom":
+        n_keep = len(stacks) - int(args.cutoff)
+    elif args.filter_method == "percentage":
+        n_keep = len(stacks) - int(len(stacks) * args.cutoff)
+    elif args.filter_method == "threshold":
+        if descending:
+            n_keep = sum(score >= args.cutoff for score in scores)
+        else:
+            n_keep = sum(score <= args.cutoff for score in scores)
+    elif args.filter_method == "none":
+        pass
+    else:
+        raise ValueError("unknown filter method")
+
+    sorter = np.argsort(-np.array(scores) if descending else scores)
+    if print_results:
+        inv = np.empty(sorter.size, dtype=np.intp)
+        inv[sorter] = np.arange(sorter.size, dtype=np.intp)
+        template = "\n%15s %15s %15s %15s"
+        result = "stack assessment results (metric = %s):" % metric + template % (
+            "stack",
+            "score " + "(" + ("\u2191" if descending else "\u2193") + ")",
+            "rank",
+            "",
+        )
+        for i, (score, rank) in enumerate(zip(scores, inv)):
+            result += template % (
+                i,
+                ("%1.4f" if isinstance(score, float) else "%d") % score,
+                rank,
+                "excluded" if rank >= n_keep else "",
+            )
+        log_result(result)
+
+    return [stacks[i] for i in sorter[:n_keep]]
 
 
 """warnings and checks"""

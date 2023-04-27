@@ -509,6 +509,32 @@ def build_parser_bias_field_correction(optional=False) -> argparse.ArgumentParse
     return _parser
 
 
+def build_parser_assessment(**kwargs) -> argparse.ArgumentParser:
+    _parser = argparse.ArgumentParser(add_help=False)
+    parser = _parser.add_argument_group("stack assessment")
+    parser.add_argument(
+        "--metric",
+        type=str,
+        choices=["ncc", "matrix-rank", "volume", "none"],
+        default="none",
+        help="Metric for assessing input stacks. `ncc`: cross correlaiton between adjacent slices; `matrix-rank`: motion metric based on the rank of the data matrix; `volume`: volume of the masked ROI; `none`: no metric.",
+    )
+    parser.add_argument(
+        "--filter-method",
+        type=str,
+        choices=["top", "bottom", "threshold", "percentage", "none"],
+        default="none",
+        help="Method to remove low-quality stacks. `top`: keep the top C stacks; `bottom`: remove the bottom C stacks; `threshold`: remove a stack if the metric is worse than C; `percentatge`: remove the bottom (num_stack * C) stacks; `none`: no filtering. The value of `C` is specified by --cutoff",
+    )
+    parser.add_argument(
+        "--cutoff",
+        type=float,
+        help="The cutoff value for filtering, i.e., the value `C` in --filter-method",
+    )
+    update_defaults(_parser, **kwargs)
+    return _parser
+
+
 def build_parser_common() -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("common")
@@ -653,6 +679,23 @@ def build_command_correct_bias_field(subparsers):
     parser_register.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
 
 
+def build_command_assess(subparsers):
+    # assess
+    parser_register = subparsers.add_parser(
+        "assess",
+        help="quality assessment of input stacks",
+        description="quality assessment of input stacks",
+        parents=[
+            build_parser_inputs(input_stacks="required", bias_field=True),
+            build_parser_assessment(metric="ncc"),
+            build_parser_common(),
+        ],
+        formatter_class=FormatterMetavar,
+        add_help=False,
+    )
+    parser_register.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="nesvor",
@@ -672,6 +715,7 @@ def main() -> None:
     build_command_register(subparsers)
     build_command_segment(subparsers)
     build_command_correct_bias_field(subparsers)
+    build_command_assess(subparsers)
 
     # parse arguments
     if len(sys.argv) == 1:
