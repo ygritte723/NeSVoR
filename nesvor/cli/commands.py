@@ -14,6 +14,7 @@ from .io import outputs, inputs
 from ..utils import makedirs, log_args, log_result
 from ..preprocessing.masking import brain_segmentation
 from ..preprocessing import bias_field, motion_estimation
+from ..preprocessing.iqa import iqa2d, iqa3d
 
 
 class Command(object):
@@ -306,9 +307,9 @@ def assess(
     args: argparse.Namespace, stacks: List[Stack], print_results=False
 ) -> Tuple[List[Stack], List[Dict[str, Any]]]:
     metric = args.metric
+    descending = True
     if metric == "ncc":
         scores = motion_estimation.ncc(stacks)
-        descending = True
     elif metric == "matrix-rank":
         scores = motion_estimation.rank(stacks)
         descending = False
@@ -322,7 +323,14 @@ def assess(
             )
             for stack in stacks
         ]
-        descending = True
+    elif metric == "iqa2d":
+        scores = iqa2d(stacks, args.device)
+    elif metric == "iqa3d":
+        scores = iqa3d(stacks)
+    elif metric == "none":
+        return stacks, []
+    else:
+        raise ValueError("unkown metric for stack assessment")
 
     n_keep = len(stacks)
     if args.filter_method == "top":
