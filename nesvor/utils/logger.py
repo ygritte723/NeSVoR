@@ -99,3 +99,13 @@ def setup_logger(filename: Optional[str], verbose: int) -> None:
         logging.error("Unhandled exception:\n%s", text)
 
     sys.excepthook = log_except_hook
+
+    levelNum = logging.WARNING + 5
+    levelName = "RESULT"
+
+    logging.addLevelName(levelNum, levelName)
+    setattr(logging, levelName, levelNum)
+
+
+def log_result(message, *args, **kwargs):
+    return logging.log(getattr(logging, "RESULT"), message, *args, **kwargs)
