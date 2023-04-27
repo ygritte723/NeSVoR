@@ -79,6 +79,7 @@ class Command(object):
 
 class Reconstruct(Command):
     def check_args(self) -> None:
+        # input
         assert (
             self.args.input_slices is not None or self.args.input_stacks is not None
         ), "No image data provided! Use --input-slices or --input-stacks to input data."
@@ -99,12 +100,14 @@ class Reconstruct(Command):
             # use input stacks
             check_len(self.args, "input_stacks", "stack_masks")
             check_len(self.args, "input_stacks", "thicknesses")
+        # output
         if self.args.output_volume is None and self.args.output_model is None:
             logging.warning("Both <output-volume> and <output-model> are not provided.")
         if not self.args.inference_batch_size:
             self.args.inference_batch_size = 8 * self.args.batch_size
         if not self.args.n_inference_samples:
             self.args.n_inference_samples = 2 * self.args.n_samples
+        # deformable
         if self.args.deformable:
             if not self.args.single_precision:
                 logging.warning(
@@ -114,7 +117,11 @@ class Reconstruct(Command):
                 logging.warning(
                     "SVoRT can only be used for rigid registration in fetal brain MRI."
                 )
+        # assessment
+        check_cutoff(self.args)
+        # registration
         svort_v1_warning(self.args)
+        # dtype
         self.args.dtype = torch.float32 if self.args.single_precision else torch.float16
 
     def exec(self) -> None:
@@ -128,6 +135,11 @@ class Reconstruct(Command):
                 self.new_timer("Bias Field Correction")
                 input_dict["input_stacks"] = correct_bias_field(
                     args, input_dict["input_stacks"]
+                )
+            if self.args.metric != "none":
+                self.new_timer("Assessment")
+                input_dict["input_stacks"], assessment_results = assess(
+                    args, input_dict["input_stacks"], False
                 )
             self.new_timer("Registration")
             slices = register(args, input_dict["input_stacks"])
@@ -286,8 +298,7 @@ def correct_bias_field(args: argparse.Namespace, stacks: List[Stack]) -> List[St
 
 class Assess(Command):
     def check_args(self) -> None:
-        if self.args.filter_method != "none" and self.args.cutoff is None:
-            raise ValueError("--cutoff for filtering is not provided!")
+        check_cutoff(self.args)
         if self.args.metric == "none":
             raise ValueError("--metric should not be none is `assess` command.")
 
@@ -402,3 +413,8 @@ def check_len(args, k1, k2):
         assert len(getattr(args, k1)) == len(
             getattr(args, k2)
         ), "The length of {k1} and {k2} are different!"
+
+
+def check_cutoff(args):
+    if args.filter_method != "none" and args.cutoff is None:
+        raise ValueError("--cutoff for filtering is not provided!")

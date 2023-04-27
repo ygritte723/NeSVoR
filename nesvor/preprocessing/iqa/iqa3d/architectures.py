@@ -3,20 +3,19 @@
 
 "adapted from https://github.com/FNNDSC/pl-fetal-brain-assessment/blob/main/fetal_brain_assessment/resnet_architecture.py"
 
-# from tensorflow import keras
-from keras.layers import (
-    Conv3D,
-    MaxPool3D,
-    Dense,
-    GlobalAveragePooling3D,
-    Add,
-)
-from keras.layers import Dropout, Input, BatchNormalization, Activation
-from keras.models import Model
+
+INPUT_SHAPE = (217, 178, 60)
 
 
 # Identity Block for ResNet
 def id_block(X, f):
+    from keras.layers import (
+        Conv3D,
+        BatchNormalization,
+        Activation,
+        Add,
+    )
+
     X_shortcut = X
 
     # First component of main path
@@ -52,10 +51,19 @@ def id_block(X, f):
     return X
 
 
-INPUT_SHAPE = (217, 178, 60)
-
-
 def model_architecture():
+    from keras.layers import (
+        Conv3D,
+        MaxPool3D,
+        Dense,
+        GlobalAveragePooling3D,
+        Dropout,
+        Input,
+        BatchNormalization,
+        Activation,
+    )
+    from keras.models import Model
+
     input_imgs = Input(shape=(*INPUT_SHAPE, 1))
 
     conv2 = Conv3D(

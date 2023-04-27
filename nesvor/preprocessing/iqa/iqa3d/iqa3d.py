@@ -1,8 +1,9 @@
 import os
-from typing import List
+from typing import List, Optional
 import numpy as np
 import torch
 import logging
+import multiprocessing
 from .architectures import model_architecture, INPUT_SHAPE
 from ....image import Stack
 from .... import __checkpoint_dir, __iqa3d
@@ -38,12 +39,7 @@ def iqa3d(stacks: List[Stack], batch_size=8, augmentation=True) -> List[float]:
         d = d[..., None]
         data.append(d.cpu().numpy())
 
-    # load model
-    model = model_architecture()
-    model.compile()
-    model.load_weights(get_iqa3d_checkpoint())
-
-    # inference
+    # augmentation
     data_all = []
     if augmentation:
         flip_dims = [None, (0,), (1,), (2,), (0, 1), (0, 2), (1, 2), (0, 1, 2)]
@@ -57,12 +53,25 @@ def iqa3d(stacks: List[Stack], batch_size=8, augmentation=True) -> List[float]:
             pad[: d_aug.shape[0], : d_aug.shape[1], : d_aug.shape[2]] = d_aug
             data_aug.append(pad)
         data_all.append(data_aug)
-    stacked_data = np.array(data_all, dtype=np.float32).reshape(
-        (len(data) * len(flip_dims), *INPUT_SHAPE, 1)
-    )
-    predict_all = model.predict(stacked_data, batch_size=batch_size).reshape(
-        len(data), len(flip_dims)
-    )
+    stacked_data = np.array(data_all, dtype=np.float32)
+
+    # run tf in another process, make sure tf release the GPU after use
+    with multiprocessing.get_context("spawn").Pool(1) as pool:
+        scores = pool.apply(inference, (stacked_data, batch_size))
+        scores = [float(score) for score in scores]
+
+    return scores
+
+
+def inference(data: np.ndarray, batch_size: Optional[int]):
+    # load model
+    model = model_architecture()
+    model.compile()
+    model.load_weights(get_iqa3d_checkpoint())
+    # predict
+    L = data.shape[0]
+    C = data.shape[1]
+    data = np.array(data, dtype=np.float32).reshape((L * C, *INPUT_SHAPE, 1))
+    predict_all = model.predict(data, batch_size=batch_size).reshape((L, C))
     predict_all = np.flip(np.sort(predict_all, -1), -1)
-    scores = predict_all[:, :2].mean(axis=-1)
-    return [float(score) for score in scores]
+    return predict_all[:, :2].mean(axis=-1)
