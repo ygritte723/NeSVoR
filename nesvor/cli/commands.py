@@ -401,20 +401,20 @@ def assess(
 """warnings and checks"""
 
 
-def svort_v1_warning(args):
+def svort_v1_warning(args: argparse.Namespace) -> None:
     if "svort" in args.registration and args.svort_version == "v1":
         logging.warning(
             "SVoRT v1 model use a different altas space. If you want to register the image to in the CRL fetal brain atlas space, try the v2 model."
         )
 
 
-def check_len(args, k1, k2):
+def check_len(args: argparse.Namespace, k1: str, k2: str) -> None:
     if getattr(args, k1, None) and getattr(args, k2, None):
         assert len(getattr(args, k1)) == len(
             getattr(args, k2)
         ), "The length of {k1} and {k2} are different!"
 
 
-def check_cutoff(args):
+def check_cutoff(args: argparse.Namespace) -> None:
     if args.filter_method != "none" and args.cutoff is None:
         raise ValueError("--cutoff for filtering is not provided!")

@@ -58,12 +58,11 @@ def iqa3d(stacks: List[Stack], batch_size=8, augmentation=True) -> List[float]:
     # run tf in another process, make sure tf release the GPU after use
     with multiprocessing.get_context("spawn").Pool(1) as pool:
         scores = pool.apply(inference, (stacked_data, batch_size))
-        scores = [float(score) for score in scores]
 
     return scores
 
 
-def inference(data: np.ndarray, batch_size: Optional[int]):
+def inference(data: np.ndarray, batch_size: Optional[int]) -> List[float]:
     # load model
     model = model_architecture()
     model.compile()
@@ -74,4 +73,5 @@ def inference(data: np.ndarray, batch_size: Optional[int]):
     data = np.array(data, dtype=np.float32).reshape((L * C, *INPUT_SHAPE, 1))
     predict_all = model.predict(data, batch_size=batch_size).reshape((L, C))
     predict_all = np.flip(np.sort(predict_all, -1), -1)
-    return predict_all[:, :2].mean(axis=-1)
+    predict_all = predict_all[:, :2].mean(axis=-1)
+    return [float(score) for score in predict_all]

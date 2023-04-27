@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 import numpy as np
 import torch
 import logging
@@ -27,7 +27,12 @@ def get_iqa2d_checkpoint() -> str:
 
 
 def iqa2d(
-    stacks: List[Stack], device, mean=None, std=None, batch_size=64, augmentation=True
+    stacks: List[Stack],
+    device,
+    mean: Optional[float] = None,
+    std: Optional[float] = None,
+    batch_size: int = 64,
+    augmentation: bool = True,
 ) -> List[float]:
     # load model
     model = resnet34(num_classes=3).to(device)
@@ -57,7 +62,9 @@ def iqa2d(
     return scores
 
 
-def batch_infer(inputs: torch.Tensor, model, batch_size: int) -> torch.Tensor:
+def batch_infer(
+    inputs: torch.Tensor, model: torch.nn.Module, batch_size: int
+) -> torch.Tensor:
     outputs = torch.empty(
         (inputs.shape[0], 3),
         dtype=inputs.dtype,
@@ -70,7 +77,14 @@ def batch_infer(inputs: torch.Tensor, model, batch_size: int) -> torch.Tensor:
     return outputs
 
 
-def _iqa2d(stack: Stack, model, mean, std, batch_size, augmentation) -> float:
+def _iqa2d(
+    stack: Stack,
+    model: torch.nn.Module,
+    mean: float,
+    std: float,
+    batch_size: int,
+    augmentation: bool,
+) -> float:
     # z_mask = stack.slices == 0
     img = (stack.slices - mean) / std
     # img[z_mask] = -mean / std
