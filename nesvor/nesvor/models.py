@@ -432,7 +432,6 @@ class NeSVoR(nn.Module):
         x: torch.Tensor,
         se: Optional[torch.Tensor] = None,
     ) -> Dict[str, Any]:
-
         density, pe, z = self.inr(x)
         prefix_shape = density.shape
         results = {"density": density}
@@ -482,7 +481,6 @@ def edge_reg(density: torch.Tensor, xyz: torch.Tensor, delta: float):
 def edge_reg_autodiff(density: torch.Tensor, xyz: torch.Tensor, delta: float):
     grad = torch.autograd.grad((density.sum(),), (xyz,), create_graph=True)[0]
     grad2 = (grad**2).sum(-1)
-    print(grad.shape, grad2.shape)
     return (delta * delta + grad2).sqrt().mean() - delta
 """
 
