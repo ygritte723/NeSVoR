@@ -146,28 +146,36 @@ def build_parser_training() -> argparse.ArgumentParser:
     parser.add_argument(
         "--single-precision",
         action="store_true",
-        help="use float32 (default: float16)",
+        help="use float32 training (default: float16/float32 mixed trainig)",
     )
     # loss function
     parser = _parser.add_argument_group("loss function")
+    # rigid transformation
     parser.add_argument(
         "--weight-transformation",
         default=0.1,
         type=float,
         help="Weight of transformation regularization.",
     )
+    # bias field
     parser.add_argument(
         "--weight-bias",
         default=100.0,
         type=float,
         help="Weight of bias field regularization.",
     )
+    # image regularization
     parser.add_argument(
         "--image-regularization",
         default="edge",
         type=str,
-        choices=["TV", "edge", "L2"],
-        help="Type of image regularization (TV: total variation, edge: edge-preserving, L2: L2 regularization of image gradient).",
+        choices=["TV", "edge", "L2", "none"],
+        help=(
+            "Type of image regularization. `TV`: total variation (L1 regularization of image gradient); "
+            "`edge`: edge-preserving regularization; "
+            "`L2`: L2 regularization of image gradient; "
+            "`none`: not image regularization."
+        ),
     )
     parser.add_argument(
         "--weight-image",
@@ -176,16 +184,25 @@ def build_parser_training() -> argparse.ArgumentParser:
         help="Weight of image regularization.",
     )
     parser.add_argument(
+        "--delta",
+        type=float,
+        default=0.2,
+        help=(
+            "Parameter to define intensity of an edge in edge-preserving regularization."
+            "The edge-preserving regularization becomes L1 when delta -> 0."
+        ),
+    )
+    parser.add_argument(
+        "--img-reg-autodiff",
+        action="store_true",
+        help="Use auto diff to compute the image graident in the image regularization. By default, a finite difference is used.",
+    )
+    # deformation regularization
+    parser.add_argument(
         "--weight-deform",
         default=0.1,
         type=float,
         help="Weight of deformation regularization ",
-    )
-    parser.add_argument(
-        "--delta",
-        type=float,
-        default=0.2,
-        help="Parameter to define intensity of an edge in edge-preserving regularization.",
     )
     # training
     parser = _parser.add_argument_group("training")

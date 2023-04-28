@@ -136,7 +136,7 @@ class INR(nn.Module):
             output_activation="None",
             n_neurons=args.width,
             n_hidden_layers=args.depth,
-            dtype=args.dtype,
+            dtype=torch.float32 if args.img_reg_autodiff else args.dtype,
         )
         # logging
         logging.debug(
@@ -277,12 +277,6 @@ class NeSVoR(nn.Module):
         self.transformation = transformation
         self.psf_sigma = resolution2sigma(resolution, isotropic=False)
         self.delta = args.delta * v_mean
-        if self.args.image_regularization == "TV":
-            self.image_regularization = tv_reg
-        elif self.args.image_regularization == "edge":
-            self.image_regularization = edge_reg
-        elif self.args.image_regularization == "L2":
-            self.image_regularization = l2_reg
         self.build_network(bounding_box)
         self.to(args.device)
 
@@ -421,11 +415,11 @@ class NeSVoR(nn.Module):
         if self.args.n_levels_bias:
             losses[B_REG] = log_bias.mean() ** 2
         if self.args.deformable:
-            losses[D_REG] = deform_reg_autodiff(self.deform_net, xyz_ori, de)
+            losses[D_REG] = self.deform_reg(
+                xyz, xyz_ori, de
+            )  # deform_reg_autodiff(self.deform_net, xyz_ori, de)
         # image regularization
-        losses[I_REG] = self.image_regularization(
-            density, xyz * self.spatial_scaling, self.delta
-        )
+        losses[I_REG] = self.img_reg(density, xyz)
 
         return losses
 
@@ -464,58 +458,60 @@ class NeSVoR(nn.Module):
         loss_T = torch.mean(err[:, 3:] ** 2)
         return loss_R + 1e-3 * self.spatial_scaling * self.spatial_scaling * loss_T
 
+    def img_reg(self, density, xyz):
+        if self.args.image_regularization == "none":
+            return torch.zeros((1,), dtype=density.dtype, device=density.device)
 
-def tv_reg(density: torch.Tensor, xyz: torch.Tensor, delta: float):
-    d_density = density - torch.flip(density, (1,))
-    dx2 = ((xyz - torch.flip(xyz, (1,))) ** 2).sum(-1) + 1e-6
-    dd_dx = d_density / dx2.sqrt()
-    return torch.abs(dd_dx).mean()
+        if self.args.img_reg_autodiff:
+            n_sample = 4
+            xyz = xyz[:, :n_sample].flatten(0, 1).detach()
+            xyz.requires_grad_()
+            density, _, _ = self.inr(xyz)
+            grad = (
+                torch.autograd.grad((density.sum(),), (xyz,), create_graph=True)[0]
+                / self.spatial_scaling
+            )
+            grad2 = grad.pow(2)
+        else:
+            xyz = xyz * self.spatial_scaling
+            d_density = density - torch.flip(density, (1,))
+            dx2 = ((xyz - torch.flip(xyz, (1,))) ** 2).sum(-1) + 1e-6
+            grad2 = d_density**2 / dx2
 
+        if self.args.image_regularization == "TV":
+            return grad2.sqrt().mean()
+        elif self.args.image_regularization == "edge":
+            return self.delta * (
+                (1 + grad2 / (self.delta * self.delta)).sqrt().mean() - 1
+            )
+        elif self.args.image_regularization == "L2":
+            return grad2.mean()
+        else:
+            raise ValueError("unknown image regularization!")
 
-def edge_reg(density: torch.Tensor, xyz: torch.Tensor, delta: float):
-    d_density = density - torch.flip(density, (1,))
-    dx2 = ((xyz - torch.flip(xyz, (1,))) ** 2).sum(-1) + 1e-6
-    dd2_dx2 = d_density**2 / dx2 / (delta * delta)
-    return delta * ((1 + dd2_dx2).sqrt().mean() - 1)
+    def deform_reg(self, out, xyz, e):
+        if True:  # use autodiff
+            n_sample = 4
+            x = xyz[:, :n_sample].flatten(0, 1).detach()
+            e = e[:, :n_sample].flatten(0, 1).detach()
 
-
-""""
-def edge_reg_autodiff(density: torch.Tensor, xyz: torch.Tensor, delta: float):
-    grad = torch.autograd.grad((density.sum(),), (xyz,), create_graph=True)[0]
-    grad2 = (grad**2).sum(-1)
-    return (delta * delta + grad2).sqrt().mean() - delta
-"""
-
-
-def l2_reg(density: torch.Tensor, xyz: torch.Tensor, delta: float):
-    d_density = density - torch.flip(density, (1,))
-    dx2 = ((xyz - torch.flip(xyz, (1,))) ** 2).sum(-1) + 1e-6
-    dd2_dx2 = d_density**2 / dx2
-    return dd2_dx2.mean()
-
-
-def deform_reg(out: torch.Tensor, xyz: torch.Tensor):
-    out = out - xyz
-    d_out2 = ((out - torch.flip(out, (1,))) ** 2).sum(-1) + 1e-6
-    dx2 = ((xyz - torch.flip(xyz, (1,))) ** 2).sum(-1) + 1e-6
-    dd_dx = d_out2.sqrt() / dx2.sqrt()
-    return F.smooth_l1_loss(dd_dx, torch.zeros_like(dd_dx).detach(), beta=1e-3)
-
-
-def deform_reg_autodiff(model, x, e):
-    n_sample = 4
-    x = x[:, :n_sample].flatten(0, 1).detach()
-    e = e[:, :n_sample].flatten(0, 1).detach()
-
-    x.requires_grad_()
-    outputs = model(x, e)
-    grads = []
-    out_sum = []
-    for i in range(3):
-        out_sum.append(outputs[:, i].sum())
-        grads.append(torch.autograd.grad((out_sum[-1],), (x,), create_graph=True)[0])
-    jacobian = torch.stack(grads, -1)
-    jtj = torch.matmul(jacobian, jacobian.transpose(-1, -2))
-    I = torch.eye(3, dtype=jacobian.dtype, device=jacobian.device).unsqueeze(0)
-    sq_residual = ((jtj - I) ** 2).sum((-2, -1))
-    return torch.nan_to_num(sq_residual, 0.0, 0.0, 0.0).mean()
+            x.requires_grad_()
+            outputs = self.deform_net(x, e)
+            grads = []
+            out_sum = []
+            for i in range(3):
+                out_sum.append(outputs[:, i].sum())
+                grads.append(
+                    torch.autograd.grad((out_sum[-1],), (x,), create_graph=True)[0]
+                )
+            jacobian = torch.stack(grads, -1)
+            jtj = torch.matmul(jacobian, jacobian.transpose(-1, -2))
+            I = torch.eye(3, dtype=jacobian.dtype, device=jacobian.device).unsqueeze(0)
+            sq_residual = ((jtj - I) ** 2).sum((-2, -1))
+            return torch.nan_to_num(sq_residual, 0.0, 0.0, 0.0).mean()
+        else:
+            out = out - xyz
+            d_out2 = ((out - torch.flip(out, (1,))) ** 2).sum(-1) + 1e-6
+            dx2 = ((xyz - torch.flip(xyz, (1,))) ** 2).sum(-1) + 1e-6
+            dd_dx = d_out2.sqrt() / dx2.sqrt()
+            return F.smooth_l1_loss(dd_dx, torch.zeros_like(dd_dx).detach(), beta=1e-3)
