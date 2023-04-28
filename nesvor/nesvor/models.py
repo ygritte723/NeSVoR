@@ -158,14 +158,16 @@ class INR(nn.Module):
             self.bounding_box[1, 2],
         )
 
-    def forward(self, x: torch.Tensor, return_all: bool = True):
+    def forward(self, x: torch.Tensor):
         x = (x - self.bounding_box[0]) / (self.bounding_box[1] - self.bounding_box[0])
         prefix_shape = x.shape[:-1]
         x = x.view(-1, x.shape[-1])
         pe = self.encoding(x)
+        if not self.training:
+            pe = pe.to(dtype=x.dtype)
         z = self.density_net(pe)
         density = F.softplus(z[..., 0].view(prefix_shape))
-        if return_all:
+        if self.training:
             return density, pe, z
         else:
             return density

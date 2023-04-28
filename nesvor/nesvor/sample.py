@@ -36,7 +36,7 @@ def sample_points(model: INR, xyz: torch.Tensor, args: Namespace) -> torch.Tenso
                 resolution2sigma(args.output_resolution, isotropic=True),
                 0 if args.no_output_psf else args.n_inference_samples,
             )
-            v_b = model(xyz_batch, False).mean(-1)
+            v_b = model(xyz_batch).mean(-1)
             v[i : i + batch_size] = v_b
     return v.view(shape)
 
@@ -57,7 +57,7 @@ def sample_slice(model: INR, slice: Slice, mask: Volume, args: Namespace) -> Sli
             resolution2sigma(slice_sampled.resolution_xyz, isotropic=False),
             0 if args.no_output_psf else args.n_inference_samples,
         )
-        v = model(xyz_masked, False).mean(-1)
+        v = model(xyz_masked).mean(-1)
         slice_sampled.mask = m.view(slice_sampled.mask.shape)
         slice_sampled.image[slice_sampled.mask] = v.to(slice_sampled.image.dtype)
     return slice_sampled
