@@ -121,6 +121,8 @@ class Dataset(object):
 def train(slices: List[Slice], args: Namespace) -> Tuple[INR, List[Slice], Volume]:
     # create training dataset
     dataset = Dataset(slices, args)
+    if args.n_epochs is not None:
+        args.n_iter = args.n_epochs * (dataset.v.numel() // args.batch_size)
 
     use_scaling = True
     use_centering = True

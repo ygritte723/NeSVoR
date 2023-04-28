@@ -212,6 +212,11 @@ def build_parser_training() -> argparse.ArgumentParser:
         "--n-iter", default=6000, type=int, help="Number of iterations for training."
     )
     parser.add_argument(
+        "--n-epochs",
+        type=int,
+        help="Number of epochs for training. If provided, will ignore --n-iter",
+    )
+    parser.add_argument(
         "--batch-size", default=1024 * 4, type=int, help="Batch size for training."
     )
     parser.add_argument(
