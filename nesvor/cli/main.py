@@ -1,5 +1,6 @@
 import argparse
 import sys
+from typing import Union
 from .commands import *
 from ..utils import setup_logger
 import torch
@@ -20,7 +21,7 @@ class FormatterMetavar(Formatter, argparse.MetavarTypeHelpFormatter):
     pass
 
 
-def update_defaults(parser, **kwargs):
+def update_defaults(parser: argparse.ArgumentParser, **kwargs):
     parser.set_defaults(**kwargs)
 
 
@@ -223,11 +224,11 @@ def build_parser_training() -> argparse.ArgumentParser:
 
 
 def build_parser_inputs(
-    input_stacks=False,
-    input_slices=False,
-    input_model=False,
-    segmentation=False,
-    bias_field=False,
+    input_stacks: Union[bool, str] = False,
+    input_slices: Union[bool, str] = False,
+    input_model: Union[bool, str] = False,
+    segmentation: bool = False,
+    bias_field: bool = False,
 ) -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("input")
@@ -284,13 +285,13 @@ def build_parser_inputs(
 
 
 def build_parser_outputs(
-    output_volume=False,
-    output_slices=False,
-    simulate_slices=False,
-    output_model=False,
-    output_stack_masks=False,
-    output_corrected_stacks=False,
-    output_json=True,
+    output_volume: Union[bool, str] = False,
+    output_slices: Union[bool, str] = False,
+    simulate_slices: Union[bool, str] = False,
+    output_model: Union[bool, str] = False,
+    output_stack_masks: Union[bool, str] = False,
+    output_corrected_stacks: Union[bool, str] = False,
+    output_json: Union[bool, str] = True,
     **kwargs,
 ) -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
@@ -415,7 +416,7 @@ def build_parser_svort() -> argparse.ArgumentParser:
     return _parser
 
 
-def build_parser_segmentation(optional=False) -> argparse.ArgumentParser:
+def build_parser_segmentation(optional: bool = False) -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("segmentation")
     if optional:
@@ -450,7 +451,9 @@ def build_parser_segmentation(optional=False) -> argparse.ArgumentParser:
     return _parser
 
 
-def build_parser_bias_field_correction(optional=False) -> argparse.ArgumentParser:
+def build_parser_bias_field_correction(
+    optional: bool = False,
+) -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("bias field correction")
     if optional:
@@ -577,7 +580,9 @@ def build_parser_common() -> argparse.ArgumentParser:
 # command parsers
 
 
-def build_command_reconstruct(subparsers) -> None:
+def build_command_reconstruct(
+    subparsers: argparse._SubParsersAction,
+) -> None:
     # reconstruct
     parser_reconstruct = subparsers.add_parser(
         "reconstruct",
@@ -606,7 +611,7 @@ def build_command_reconstruct(subparsers) -> None:
     )
 
 
-def build_command_sample_volume(subparsers) -> None:
+def build_command_sample_volume(subparsers: argparse._SubParsersAction) -> None:
     # sample-volume
     parser_sample_volume = subparsers.add_parser(
         "sample-volume",
@@ -629,7 +634,7 @@ def build_command_sample_volume(subparsers) -> None:
     )
 
 
-def build_command_sample_slices(subparsers):
+def build_command_sample_slices(subparsers: argparse._SubParsersAction):
     # sample-slices
     parser_sample_slices = subparsers.add_parser(
         "sample-slices",
@@ -648,7 +653,7 @@ def build_command_sample_slices(subparsers):
     )
 
 
-def build_command_register(subparsers):
+def build_command_register(subparsers: argparse._SubParsersAction):
     # register
     parser_register = subparsers.add_parser(
         "register",
@@ -666,7 +671,7 @@ def build_command_register(subparsers):
     parser_register.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
 
 
-def build_command_segment(subparsers):
+def build_command_segment(subparsers: argparse._SubParsersAction):
     # segment
     parser_register = subparsers.add_parser(
         "segment",
@@ -684,7 +689,7 @@ def build_command_segment(subparsers):
     parser_register.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
 
 
-def build_command_correct_bias_field(subparsers):
+def build_command_correct_bias_field(subparsers: argparse._SubParsersAction):
     # correct-bias-field
     parser_register = subparsers.add_parser(
         "correct-bias-field",
@@ -702,7 +707,7 @@ def build_command_correct_bias_field(subparsers):
     parser_register.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
 
 
-def build_command_assess(subparsers):
+def build_command_assess(subparsers: argparse._SubParsersAction):
     # assess
     parser_register = subparsers.add_parser(
         "assess",
