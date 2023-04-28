@@ -325,9 +325,10 @@ def build_parser_outputs(
             help="number of sample for PSF during inference",
         )
         parser.add_argument(
-            "--no-output-psf",
-            action="store_true",
-            help="Disable psf for generating output volume",
+            "--output-psf-factor",
+            type=float,
+            default=1.0,
+            help="Determind the psf for generating output volume: FWHM = output-resolution * output-psf-factor",
         )
         parser.add_argument(
             "--sample-orientation",
