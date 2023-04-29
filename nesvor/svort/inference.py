@@ -11,7 +11,7 @@ from ..transform import RigidTransform, mat_update_resolution
 from ..utils import get_PSF, ncc_loss
 from ..slice_acquisition import slice_acquisition
 from ..image import Stack, Slice
-from .. import __checkpoint_dir, __pretrained_svort
+from .. import CHECKPOINT_DIR, SVORT_URL_DICT
 
 
 def compute_score(ncc: torch.Tensor, ncc_weight: torch.Tensor) -> float:
@@ -657,12 +657,12 @@ def svort_predict(
 ) -> List[Slice]:
     model: Optional[torch.nn.Module] = None
     if svort:
-        if svort_version not in __pretrained_svort:
+        if svort_version not in SVORT_URL_DICT:
             raise ValueError("unknown SVoRT version!")
-        svort_url = __pretrained_svort[svort_version]
+        svort_url = SVORT_URL_DICT[svort_version]
         cp = torch.hub.load_state_dict_from_url(
             url=svort_url,
-            model_dir=__checkpoint_dir,
+            model_dir=CHECKPOINT_DIR,
             map_location=device,
             file_name="SVoRT_%s.pt" % svort_version,
         )

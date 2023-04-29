@@ -8,21 +8,21 @@ import numpy as np
 from ..image import load_volume
 from ..utils import makedirs, LogIO
 from .. import (
-    __twai,
-    __niftyreg_bin,
-    __nnUNet_raw_data_base,
-    __nnUNet_preprocessed,
-    __nnUNet_trained_models,
+    TWAI_DIR,
+    NIFTYREG_BIN_DIR,
+    NNUNet_RAW_DATA_DIR,
+    NNUNet_PREPROCESSED_DIR,
+    NNUNET_TRAINED_MODELs_DIR,
 )
 
 
 def config_env():
     np.int = np.int32  # TWAI uses an older version of numpy
-    twai_path = __twai
-    niftyreg_path = __niftyreg_bin
-    os.environ["nnUNet_raw_data_base"] = __nnUNet_raw_data_base
-    os.environ["nnUNet_preprocessed"] = __nnUNet_preprocessed
-    os.environ["RESULTS_FOLDER"] = __nnUNet_trained_models
+    twai_path = TWAI_DIR
+    niftyreg_path = NIFTYREG_BIN_DIR
+    os.environ["nnUNet_raw_data_base"] = NNUNet_RAW_DATA_DIR
+    os.environ["nnUNet_preprocessed"] = NNUNet_PREPROCESSED_DIR
+    os.environ["RESULTS_FOLDER"] = NNUNET_TRAINED_MODELs_DIR
     os.environ["MKL_THREADING_LAYER"] = "GNU"
     os.environ["LD_LIBRARY_PATH"] = os.environ["LD_LIBRARY_PATH"] + ":/usr/local/lib/"
     os.environ["PATH"] = os.environ["PATH"] + ":" + niftyreg_path
@@ -58,7 +58,7 @@ def config_env():
         raise
     # check model weights
     model_path = os.path.join(
-        __nnUNet_trained_models, "nnUNet", "3d_fullres", "Task225_FetalBrain3dTrust"
+        NNUNET_TRAINED_MODELs_DIR, "nnUNet", "3d_fullres", "Task225_FetalBrain3dTrust"
     )
     if not os.path.exists(model_path):
         raise FileNotFoundError(

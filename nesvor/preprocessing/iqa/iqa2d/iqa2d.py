@@ -5,17 +5,17 @@ import torch
 import logging
 from .architectures import resnet34
 from ....image import Stack
-from .... import __checkpoint_dir, __iqa2d
+from .... import CHECKPOINT_DIR, IQA2D_URL
 
 
 def get_iqa2d_checkpoint() -> str:
-    model_dir = __checkpoint_dir
+    model_dir = CHECKPOINT_DIR
     model_name = "iqa2d.pt"
     if not os.path.exists(os.path.join(model_dir, model_name)):
         logging.info(
             "2D IQA CNN checkpoint not found. trying to download the checkpoint."
         )
-        url = __iqa2d
+        url = IQA2D_URL
         torch.hub.download_url_to_file(url, os.path.join(model_dir, model_name))
         checkpoint = torch.load(os.path.join(model_dir, model_name))
         state_dict = checkpoint["ema_state_dict"]

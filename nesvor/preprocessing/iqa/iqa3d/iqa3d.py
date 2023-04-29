@@ -6,17 +6,17 @@ import logging
 import multiprocessing
 from .architectures import model_architecture, INPUT_SHAPE
 from ....image import Stack
-from .... import __checkpoint_dir, __iqa3d
+from .... import CHECKPOINT_DIR, IQA3D_URL
 
 
 def get_iqa3d_checkpoint() -> str:
-    model_dir = __checkpoint_dir
+    model_dir = CHECKPOINT_DIR
     model_name = "iqa3d.hdf5"
     if not os.path.exists(os.path.join(model_dir, model_name)):
         logging.info(
             "3D IQA CNN checkpoint not found. trying to download the checkpoint."
         )
-        url = __iqa3d
+        url = IQA3D_URL
         torch.hub.download_url_to_file(url, os.path.join(model_dir, model_name))
     return os.path.join(model_dir, model_name)
 

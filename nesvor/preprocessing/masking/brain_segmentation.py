@@ -15,7 +15,7 @@ import logging
 from skimage.morphology import dilation, disk
 from skimage.measure import label
 from ...image import Stack
-from ... import __checkpoint_dir, __monaifbs
+from ... import CHECKPOINT_DIR, MONAIFBS_URL
 
 
 RESOLUTION = 0.8
@@ -24,13 +24,13 @@ H_min, H_factor = 4, 128
 
 
 def get_monaifbs_checkpoint() -> str:
-    model_dir = __checkpoint_dir
+    model_dir = CHECKPOINT_DIR
     model_name = "checkpoint_dynUnet_DiceXent.pt"
     if not os.path.exists(os.path.join(model_dir, model_name)):
         logging.info(
             "monaifbs checkpoint not found. trying to download the checkpoint."
         )
-        url = __monaifbs
+        url = MONAIFBS_URL
         zip_name = "monaifbs_models.tar.gz"
         torch.hub.download_url_to_file(url, os.path.join(model_dir, zip_name))
         with tarfile.open(os.path.join(model_dir, zip_name)) as file:
