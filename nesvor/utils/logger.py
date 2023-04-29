@@ -4,6 +4,7 @@ from argparse import Namespace
 import logging
 import traceback
 import sys
+import io
 
 
 class LazyLog(object):
@@ -109,3 +110,15 @@ def setup_logger(filename: Optional[str], verbose: int) -> None:
 
 def log_result(message, *args, **kwargs):
     return logging.log(getattr(logging, "RESULT"), message, *args, **kwargs)
+
+
+class LogIO(io.StringIO):
+    def __init__(self, fn, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.fn = fn
+
+    def write(self, __s: str) -> int:
+        __s = __s.strip()
+        if __s:
+            self.fn(__s)
+        return super().write(__s)
