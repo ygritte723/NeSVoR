@@ -40,8 +40,8 @@ def CG(
 def PSFreconstruction(
     transforms: torch.Tensor,
     slices: torch.Tensor,
-    slices_mask: torch.Tensor,
-    vol_mask: torch.Tensor,
+    slices_mask: Optional[torch.Tensor],
+    vol_mask: Optional[torch.Tensor],
     params: Dict,
 ):
     return slice_acquisition_adjoint(

@@ -219,16 +219,20 @@ def parse_data(
         # crop x,y
         s = slices[torch.argmax((slices > 0).sum((1, 2, 3))), 0]
         i1, i2, j1, j2 = 0, s.shape[0] - 1, 0, s.shape[1] - 1
-        while s[i1, :].sum() == 0:
+        while i1 < s.shape[0] and s[i1, :].sum() == 0:
             i1 += 1
-        while s[i2, :].sum() == 0:
+        while i2 and s[i2, :].sum() == 0:
             i2 -= 1
-        while s[:, j1].sum() == 0:
+        while j1 < s.shape[1] and s[:, j1].sum() == 0:
             j1 += 1
-        while s[:, j2].sum() == 0:
+        while j2 and s[:, j2].sum() == 0:
             j2 -= 1
         if ((i2 - i1) > 128 or (j2 - j1) > 128) and svort:
             logging.warning("ROI in the data is too large for SVoRT")
+        if (i2 - i1) <= 0:
+            logging.warning(
+                "One of the input stack is all zero after maksing. Please check your data!"
+            )
         pad_margin = 64
         slices = F.pad(
             slices, (pad_margin, pad_margin, pad_margin, pad_margin), "constant", 0
@@ -514,7 +518,6 @@ def run_svort(
     force_vvr: bool,
     force_scanner: bool,
 ) -> List[Slice]:
-
     res_s = 1.0
     res_r = 0.8
 

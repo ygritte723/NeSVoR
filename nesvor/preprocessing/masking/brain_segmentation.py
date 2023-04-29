@@ -46,7 +46,6 @@ def get_monaifbs_checkpoint() -> str:
 
 
 def build_monaifbs_net(device):
-
     logging.info("building monaifbs network")
 
     try:
@@ -208,4 +207,8 @@ def segment(
             radius,
             threshold_small,
         )
+        if not stack.mask.any():
+            logging.warning(
+                "One of the input stack is all zero after brain segmentation. Please check your data!"
+            )
     return stacks
