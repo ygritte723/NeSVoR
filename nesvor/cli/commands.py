@@ -15,6 +15,7 @@ from ..utils import makedirs, log_args, log_result
 from ..preprocessing.masking import brain_segmentation
 from ..preprocessing import bias_field, motion_estimation
 from ..preprocessing.iqa import iqa2d, iqa3d
+from ..segmentation import twai
 
 
 class Command(object):
@@ -396,6 +397,25 @@ def assess(
 
     filtered_stacks = [stacks[i] for i in sorter[:n_keep]]
     return filtered_stacks, results
+
+
+class SegmentVolume(Command):
+    def check_args(self) -> None:
+        pass
+
+    def exec(self) -> None:
+        self.new_timer("volume segmentation")
+        args = argparse.Namespace(
+            output_folder=(
+                "/home/junshen/trustworthy-ai-fetal-brain-segmentation/output"
+            ),
+            input="/home/junshen/SVoRT/github/NeSVoR/out.nii.gz",
+            mask="/home/junshen/SVoRT/github/NeSVoR/out.nii.gz",
+            ga=None,
+            condition="Neurotypical",
+        )
+        self.args.name = "segmentation"
+        twai(self.args)
 
 
 """warnings and checks"""

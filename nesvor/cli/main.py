@@ -107,6 +107,7 @@ def build_parser_training() -> argparse.ArgumentParser:
         action="store_true",
         help="Disable slice-level variance.",
     )
+    parser = _parser.add_argument_group("model architecture (deformable part)")
     # deformable net
     parser.add_argument(
         "--deformable",
@@ -143,13 +144,9 @@ def build_parser_training() -> argparse.ArgumentParser:
         type=float,
         help="Resolution of the finest grid in millimeter (deformation field).",
     )
-    parser.add_argument(
-        "--single-precision",
-        action="store_true",
-        help="use float32 training (default: float16/float32 mixed trainig)",
-    )
+
     # loss function
-    parser = _parser.add_argument_group("loss function")
+    parser = _parser.add_argument_group("loss and regularization")
     # rigid transformation
     parser.add_argument(
         "--weight-transformation",
@@ -204,6 +201,7 @@ def build_parser_training() -> argparse.ArgumentParser:
         type=float,
         help="Weight of deformation regularization ",
     )
+
     # training
     parser = _parser.add_argument_group("training")
     parser.add_argument(
@@ -242,6 +240,11 @@ def build_parser_training() -> argparse.ArgumentParser:
         type=int,
         help="Number of sample for PSF during training.",
     )
+    parser.add_argument(
+        "--single-precision",
+        action="store_true",
+        help="use float32 training (default: float16/float32 mixed trainig)",
+    )
     return _parser
 
 
@@ -249,6 +252,7 @@ def build_parser_inputs(
     input_stacks: Union[bool, str] = False,
     input_slices: Union[bool, str] = False,
     input_model: Union[bool, str] = False,
+    input_volume: Union[bool, str] = False,
     segmentation: bool = False,
     bias_field: bool = False,
 ) -> argparse.ArgumentParser:
@@ -303,6 +307,20 @@ def build_parser_inputs(
             required=input_model == "required",
             help="Path to the trained NeSVoR model.",
         )
+    # input volume
+    if input_volume:
+        parser.add_argument(
+            "--input-volume",
+            type=str,
+            required=input_volume == "required",
+            help="Path to the input 3D volume.",
+        )
+        parser.add_argument(
+            "--volume-mask",
+            type=str,
+            help="Paths to a 3D mask of ROI. Will be estimated from the input volume if not provided",
+        )
+
     return _parser
 
 
@@ -313,6 +331,7 @@ def build_parser_outputs(
     output_model: Union[bool, str] = False,
     output_stack_masks: Union[bool, str] = False,
     output_corrected_stacks: Union[bool, str] = False,
+    output_folder: Union[bool, str] = False,
     output_json: Union[bool, str] = True,
     **kwargs,
 ) -> argparse.ArgumentParser:
@@ -410,19 +429,34 @@ def build_parser_outputs(
             type=str,
             help="Path to a json file for saving the inputs and results of the command.",
         )
+    if output_folder:
+        parser.add_argument(
+            "--output-folder",
+            type=str,
+            required=output_folder == "required",
+            help="Path to save outputs.",
+        )
+
     update_defaults(_parser, **kwargs)
     return _parser
 
 
 def build_parser_svort() -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
-    parser = _parser.add_argument_group("registration")
+    parser = _parser.add_argument_group("rigid registration")
     parser.add_argument(
         "--registration",
         default="svort",
         type=str,
         choices=["svort", "svort-stack", "stack", "none"],
-        help="The type of registration method applied before reconstruction. svort: the full SVoRT model, svort-stack: only apply stack transformations of SVoRT, stack: stack-to-stack rigid registration, none: no registration.",
+        help=(
+            "The type of registration method applied before reconstruction. "
+            "`svort`: the full SVoRT model; "
+            "`svort-stack`: only apply stack transformations of SVoRT; "
+            "`stack`: stack-to-stack rigid registration; "
+            "`none`: no registration. "
+            "[Note] The SVoRT model can be only applied to fetal brain data. "
+        ),
     )
     parser.add_argument(
         "--svort-version",
@@ -434,19 +468,22 @@ def build_parser_svort() -> argparse.ArgumentParser:
     parser.add_argument(
         "--scanner-space",
         action="store_true",
-        help="Perform registration in the scanner space. Default: register the data to the atlas space when svort or svort-stack are used.",
+        help=(
+            "Perform registration in the scanner space. "
+            "Default: register the data to the atlas space when svort or svort-stack are used."
+        ),
     )
     return _parser
 
 
 def build_parser_segmentation(optional: bool = False) -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
-    parser = _parser.add_argument_group("segmentation")
+    parser = _parser.add_argument_group("brain segmentation")
     if optional:
         parser.add_argument(
             "--segmentation",
             action="store_true",
-            help="Perform fetal brain segmentation.",
+            help="Perform fetal brain segmentation (brain ROI masking) for each input stack.",
         )
     parser.add_argument(
         "--batch-size-seg",
@@ -469,7 +506,10 @@ def build_parser_segmentation(optional: bool = False) -> argparse.ArgumentParser
         "--threshold-small-seg",
         type=float,
         default=0.1,
-        help="Threshold for removing small segmetation mask (between 0 and 1). A mask will be removed if its area < threshold * max area in the stack.",
+        help=(
+            "Threshold for removing small segmetation mask (between 0 and 1). "
+            "A mask will be removed if its area < threshold * max area in the stack."
+        ),
     )
     return _parser
 
@@ -478,7 +518,7 @@ def build_parser_bias_field_correction(
     optional: bool = False,
 ) -> argparse.ArgumentParser:
     _parser = argparse.ArgumentParser(add_help=False)
-    parser = _parser.add_argument_group("bias field correction")
+    parser = _parser.add_argument_group("N4 bias field correction")
     if optional:
         parser.add_argument(
             "--bias-field-correction",
@@ -531,7 +571,10 @@ def build_parser_bias_field_correction(
         "--n-control-points-n4",
         type=int,
         default=4,
-        help="The control point grid size in each dimension. The B-spline mesh size is equal to the number of control points in that dimension minus the spline order.",
+        help=(
+            "The control point grid size in each dimension. "
+            "The B-spline mesh size is equal to the number of control points in that dimension minus the spline order."
+        ),
     )
     parser.add_argument(
         "--n-bins-n4",
@@ -555,8 +598,8 @@ def build_parser_assessment(**kwargs) -> argparse.ArgumentParser:
             "`ncc`: cross correlaiton between adjacent slices; "
             "`matrix-rank`: motion metric based on the rank of the data matrix; "
             "`volume`: volume of the masked ROI; "
-            "`iqa2d`: image quality score generated by a 2D CNN, the score of a stack is the average score of the images in it; "
-            "`iqa3d`: image quality score generated by a 3D CNN; "
+            "`iqa2d`: image quality score generated by a 2D CNN (only for fetal brain), the score of a stack is the average score of the images in it; "
+            "`iqa3d`: image quality score generated by a 3D CNN (only for fetal brain); "
             "`none`: no metric."
         ),
     )
@@ -580,6 +623,29 @@ def build_parser_assessment(**kwargs) -> argparse.ArgumentParser:
         help="The cutoff value for filtering, i.e., the value `C` in --filter-method",
     )
     update_defaults(_parser, **kwargs)
+    return _parser
+
+
+def build_parser_volume_segmentation() -> argparse.ArgumentParser:
+    _parser = argparse.ArgumentParser(add_help=False)
+    parser = _parser.add_argument_group("TWAI brain segmentation")
+    parser.add_argument(
+        "--ga",
+        type=float,
+        help="Gestational age at the time of acquisition of the fetal brain 3D MRI to be segmented.",
+    )
+    parser.add_argument(
+        "--condition",
+        type=str,
+        choices=["Neurotypical", "Spina Bifida", "Pathological"],
+        default="Neurotypical",
+        help="Brain condition of the fetal brain 3D MRI to be segmented.",
+    )
+    parser.add_argument(
+        "--bias-field-correction",
+        action="store_true",
+        help="Perform bias field correction before segmentation.",
+    )
     return _parser
 
 
@@ -610,7 +676,15 @@ def build_command_reconstruct(
     parser_reconstruct = subparsers.add_parser(
         "reconstruct",
         help="slice-to-volume reconstruction using NeSVoR",
-        description="slice-to-volume reconstruction using NeSVoR",
+        description=(
+            "Use the NeSVoR algorithm to reconstuct a high-quality and coherent 3D volume from multiple stacks of 2D slices. "
+            "This command can be applied to both rigid (e.g., brain) and non-rigid (e.g. uterus) motion. "
+            "It also includes several optional preprocessing stpes: "
+            "1: ROI masking / segmentation from each input stack with a CNN (only for fetal brain); "
+            "2: N4 bias filed correction for each stack; "
+            "3: Assess quality and motion of each stack, which can be used to rank and filter the data; "
+            "4: Motion correction with SVoRT (only for fetal brain) or stack-to-stack registration. "
+        ),
         parents=[
             build_parser_inputs(input_stacks=True, input_slices=True),
             build_parser_outputs(
@@ -680,8 +754,8 @@ def build_command_register(subparsers: argparse._SubParsersAction):
     # register
     parser_register = subparsers.add_parser(
         "register",
-        help="slice-to-volume registration using SVoRT",
-        description="slice-to-volume registration using SVoRT",
+        help="slice-to-volume registration",
+        description="Perform inital (rigid) motion correction using SVoRT (only for fetal brain) or stack-to-stack registration.",
         parents=[
             build_parser_inputs(input_stacks="required"),
             build_parser_outputs(output_slices="required"),
@@ -696,10 +770,13 @@ def build_command_register(subparsers: argparse._SubParsersAction):
 
 def build_command_segment(subparsers: argparse._SubParsersAction):
     # segment
-    parser_register = subparsers.add_parser(
+    parser_segment = subparsers.add_parser(
         "segment",
-        help="fetal brain segmentation",
-        description="fetal brain segmentation",
+        help="2D fetal brain segmentation/masking",
+        description=(
+            "Segment the fetal brain ROI from each stack using a CNN model (MONAIfbs). "
+            "See https://github.com/gift-surg/MONAIfbs for details. "
+        ),
         parents=[
             build_parser_inputs(input_stacks="required", segmentation=True),
             build_parser_outputs(output_stack_masks="required"),
@@ -709,15 +786,15 @@ def build_command_segment(subparsers: argparse._SubParsersAction):
         formatter_class=FormatterMetavar,
         add_help=False,
     )
-    parser_register.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
+    parser_segment.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
 
 
 def build_command_correct_bias_field(subparsers: argparse._SubParsersAction):
     # correct-bias-field
-    parser_register = subparsers.add_parser(
+    parser_correct_bias_field = subparsers.add_parser(
         "correct-bias-field",
         help="bias field correction",
-        description="bias field correction",
+        description="Perform bias field correction for each input stack with the N4 algorithm.",
         parents=[
             build_parser_inputs(input_stacks="required", bias_field=True),
             build_parser_outputs(output_corrected_stacks="required"),
@@ -727,15 +804,20 @@ def build_command_correct_bias_field(subparsers: argparse._SubParsersAction):
         formatter_class=FormatterMetavar,
         add_help=False,
     )
-    parser_register.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
+    parser_correct_bias_field.add_argument(
+        "-h", "--help", action="help", help=argparse.SUPPRESS
+    )
 
 
 def build_command_assess(subparsers: argparse._SubParsersAction):
     # assess
-    parser_register = subparsers.add_parser(
+    parser_assess = subparsers.add_parser(
         "assess",
         help="quality assessment of input stacks",
-        description="quality assessment of input stacks",
+        description=(
+            "Assess the quality and motion of each input stack. "
+            "The output metrics can be used for determining the template stack or removing low-quality data"
+        ),
         parents=[
             build_parser_inputs(input_stacks="required", bias_field=True),
             build_parser_outputs(),
@@ -745,7 +827,38 @@ def build_command_assess(subparsers: argparse._SubParsersAction):
         formatter_class=FormatterMetavar,
         add_help=False,
     )
-    parser_register.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
+    parser_assess.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
+
+
+def build_command_segment_volume(subparsers: argparse._SubParsersAction):
+    # segment-volume
+    parser_segment_volume = subparsers.add_parser(
+        "segment-volume",
+        help="3D fetal brain segmentation",
+        description=(
+            "TWAI brain segmentation of reconstructed 3D volume. Segmentation labels: "
+            "1: white matter (excluding corpus callosum); "
+            "2: intra-axial cerebrospinal fluid (CSF); "
+            "3: cerebellum; "
+            "4: extra-axial CSF; "
+            "5: cortical gray matter; "
+            "6: deep gray matter; "
+            "7: brainstem; "
+            "8: corpus callosum. "
+            "Check out https://github.com/LucasFidon/trustworthy-ai-fetal-brain-segmentation for details."
+        ),
+        parents=[
+            build_parser_inputs(input_volume="required"),
+            build_parser_volume_segmentation(),
+            build_parser_outputs(output_json=False, output_folder="required"),
+            build_parser_common(),
+        ],
+        formatter_class=FormatterMetavar,
+        add_help=False,
+    )
+    parser_segment_volume.add_argument(
+        "-h", "--help", action="help", help=argparse.SUPPRESS
+    )
 
 
 def main() -> None:
@@ -768,15 +881,16 @@ def main() -> None:
     build_command_segment(subparsers)
     build_command_correct_bias_field(subparsers)
     build_command_assess(subparsers)
+    build_command_segment_volume(subparsers)
 
     # parse arguments
     if len(sys.argv) == 1:
         parser.print_help(sys.stdout)
         return
     args = parser.parse_args()
-    if len(sys.argv) == 2:
-        locals()["parser_" + args.command.replace("-", "_")].print_help(sys.stdout)
-        return
+    # if len(sys.argv) == 2:
+    #    locals()["parser_" + args.command.replace("-", "_")].print_help(sys.stdout)
+    #    return
     args.device = torch.device(args.device)
     if args.seed is not None:
         torch.manual_seed(args.seed)
