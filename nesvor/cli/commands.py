@@ -131,7 +131,9 @@ class Reconstruct(Command):
         if "input_stacks" in input_dict and input_dict["input_stacks"]:
             if self.args.segmentation:
                 self.new_timer("Segmentation")
-                input_dict["input_stacks"] = segment(args, input_dict["input_stacks"])
+                input_dict["input_stacks"] = segment_stack(
+                    args, input_dict["input_stacks"]
+                )
             if self.args.bias_field_correction:
                 self.new_timer("Bias Field Correction")
                 input_dict["input_stacks"] = correct_bias_field(
@@ -221,7 +223,7 @@ def register(args: argparse.Namespace, data: List[Stack]) -> List[Slice]:
     return slices
 
 
-class Segment(Command):
+class SegmentStack(Command):
     def check_args(self) -> None:
         if len(self.args.output_stack_masks) == 1:
             folder = self.args.output_stack_masks[0]
@@ -239,7 +241,7 @@ class Segment(Command):
         if not ("input_stacks" in input_dict and input_dict["input_stacks"]):
             raise ValueError("No data found!")
         self.new_timer("Segmentation")
-        seg_stacks = segment(args, input_dict["input_stacks"])
+        seg_stacks = segment_stack(args, input_dict["input_stacks"])
         self.new_timer("Results saving")
         outputs(
             {"output_stack_masks": [stack.get_mask_volume() for stack in seg_stacks]},
@@ -247,7 +249,7 @@ class Segment(Command):
         )
 
 
-def segment(args: argparse.Namespace, data: List[Stack]) -> List[Stack]:
+def segment_stack(args: argparse.Namespace, data: List[Stack]) -> List[Stack]:
     data = brain_segmentation.segment(
         data,
         args.device,

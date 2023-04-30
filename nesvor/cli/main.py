@@ -318,7 +318,10 @@ def build_parser_inputs(
         parser.add_argument(
             "--volume-mask",
             type=str,
-            help="Paths to a 3D mask of ROI. Will be estimated from the input volume if not provided",
+            help=(
+                "Paths to a 3D mask of ROI in the volume. "
+                "Will use the non-zero region of the input volume if not provided"
+            ),
         )
 
     return _parser
@@ -671,7 +674,7 @@ def build_parser_common() -> argparse.ArgumentParser:
 
 def build_command_reconstruct(
     subparsers: argparse._SubParsersAction,
-) -> None:
+) -> argparse.ArgumentParser:
     # reconstruct
     parser_reconstruct = subparsers.add_parser(
         "reconstruct",
@@ -706,9 +709,12 @@ def build_command_reconstruct(
     parser_reconstruct.add_argument(
         "-h", "--help", action="help", help=argparse.SUPPRESS
     )
+    return parser_reconstruct
 
 
-def build_command_sample_volume(subparsers: argparse._SubParsersAction) -> None:
+def build_command_sample_volume(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
     # sample-volume
     parser_sample_volume = subparsers.add_parser(
         "sample-volume",
@@ -729,9 +735,12 @@ def build_command_sample_volume(subparsers: argparse._SubParsersAction) -> None:
     parser_sample_volume.add_argument(
         "-h", "--help", action="help", help=argparse.SUPPRESS
     )
+    return parser_sample_volume
 
 
-def build_command_sample_slices(subparsers: argparse._SubParsersAction):
+def build_command_sample_slices(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
     # sample-slices
     parser_sample_slices = subparsers.add_parser(
         "sample-slices",
@@ -748,9 +757,12 @@ def build_command_sample_slices(subparsers: argparse._SubParsersAction):
     parser_sample_slices.add_argument(
         "-h", "--help", action="help", help=argparse.SUPPRESS
     )
+    return parser_sample_slices
 
 
-def build_command_register(subparsers: argparse._SubParsersAction):
+def build_command_register(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
     # register
     parser_register = subparsers.add_parser(
         "register",
@@ -766,12 +778,15 @@ def build_command_register(subparsers: argparse._SubParsersAction):
         add_help=False,
     )
     parser_register.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
+    return parser_register
 
 
-def build_command_segment(subparsers: argparse._SubParsersAction):
-    # segment
-    parser_segment = subparsers.add_parser(
-        "segment",
+def build_command_segment_stack(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
+    # segment-stack
+    parser_segment_stack = subparsers.add_parser(
+        "segment-stack",
         help="2D fetal brain segmentation/masking",
         description=(
             "Segment the fetal brain ROI from each stack using a CNN model (MONAIfbs). "
@@ -786,10 +801,15 @@ def build_command_segment(subparsers: argparse._SubParsersAction):
         formatter_class=FormatterMetavar,
         add_help=False,
     )
-    parser_segment.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
+    parser_segment_stack.add_argument(
+        "-h", "--help", action="help", help=argparse.SUPPRESS
+    )
+    return parser_segment_stack
 
 
-def build_command_correct_bias_field(subparsers: argparse._SubParsersAction):
+def build_command_correct_bias_field(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
     # correct-bias-field
     parser_correct_bias_field = subparsers.add_parser(
         "correct-bias-field",
@@ -807,9 +827,12 @@ def build_command_correct_bias_field(subparsers: argparse._SubParsersAction):
     parser_correct_bias_field.add_argument(
         "-h", "--help", action="help", help=argparse.SUPPRESS
     )
+    return parser_correct_bias_field
 
 
-def build_command_assess(subparsers: argparse._SubParsersAction):
+def build_command_assess(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
     # assess
     parser_assess = subparsers.add_parser(
         "assess",
@@ -828,9 +851,12 @@ def build_command_assess(subparsers: argparse._SubParsersAction):
         add_help=False,
     )
     parser_assess.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
+    return parser_assess
 
 
-def build_command_segment_volume(subparsers: argparse._SubParsersAction):
+def build_command_segment_volume(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
     # segment-volume
     parser_segment_volume = subparsers.add_parser(
         "segment-volume",
@@ -859,6 +885,7 @@ def build_command_segment_volume(subparsers: argparse._SubParsersAction):
     parser_segment_volume.add_argument(
         "-h", "--help", action="help", help=argparse.SUPPRESS
     )
+    return parser_segment_volume
 
 
 def main() -> None:
@@ -874,23 +901,25 @@ def main() -> None:
     parser.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
     subparsers = parser.add_subparsers(title="commands", metavar=None, dest="command")
 
-    build_command_reconstruct(subparsers)
-    build_command_sample_volume(subparsers)
-    build_command_sample_slices(subparsers)
-    build_command_register(subparsers)
-    build_command_segment(subparsers)
-    build_command_correct_bias_field(subparsers)
-    build_command_assess(subparsers)
-    build_command_segment_volume(subparsers)
+    parser_reconstruct = build_command_reconstruct(subparsers)
+    parser_sample_volume = build_command_sample_volume(subparsers)
+    parser_sample_slices = build_command_sample_slices(subparsers)
+    parser_register = build_command_register(subparsers)
+    parser_segment_stack = build_command_segment_stack(subparsers)
+    parser_correct_bias_field = build_command_correct_bias_field(subparsers)
+    parser_assess = build_command_assess(subparsers)
+    parser_segment_volume = build_command_segment_volume(subparsers)
 
     # parse arguments
     if len(sys.argv) == 1:
         parser.print_help(sys.stdout)
         return
+    if len(sys.argv) == 2:
+        parser_name = "parser_" + sys.argv[-1].replace("-", "_")
+        if parser_name in locals():
+            locals()[parser_name].print_help(sys.stdout)
+            return
     args = parser.parse_args()
-    # if len(sys.argv) == 2:
-    #    locals()["parser_" + args.command.replace("-", "_")].print_help(sys.stdout)
-    #    return
     args.device = torch.device(args.device)
     if args.seed is not None:
         torch.manual_seed(args.seed)
