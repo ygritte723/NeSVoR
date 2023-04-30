@@ -20,32 +20,28 @@ This package is the accumulation of the following works:
 - [Overview](#overview)
 - [Installation](#installation)
   - [From Source](#from-source)
-  <!--
-    - [Prerequisites](#prerequisites)
-    - [Get the NeSVoR Source](#get-the-nesvor-source)
-    - [Install Dependencies](#install-dependencies)
-    - [Install NeSVoR](#install-nesvor)-->
   - [Docker Image](#docker-image)
-  <!--
-    - [Install Docker and NVIDIA Container Toolkit](#install-docker-and-nvidia-container-toolkit)
-    - [Download and Run NeSVoR Image](#download-and-run-nesvor-image)-->
 - [Quick Start](#quick-start)
   - [Fetal Brain Reconstruction](#fetal-brain-reconstruction)
   - [Fetal Body/Uterus Reconstruction](#fetal-bodyuterus-reconstruction)
 - [Usage](#usage)
-  - [Reconstruction](#reconstruction)
+  - [Reconstruction (Motion Correction)](#registration-motion-correction)
   - [Registration](#registration)
   - [Sample Volume](#sample-volume)
   - [Sample Slices](#sample-slices)
-  - [Brain Segmentation](#brain-segmentation)
-  - [Bias Field Correction](#bias-field-correction) <!-- - [Resources](#resources) -->
+  - [Preprocessing](#preprocessing)
+    - [Brain Masking](#brain-masking)
+    - [Bias Field Correction](#bias-field-correction) <!-- - [Resources](#resources) -->
+    - [Stack Quality Assessment](#stack-quality-assessment)
+  - [3D Brain Segmentation](#3d-brain-segmentation)
 - [Cite Our Work](#cite-our-work)
+- [Resources](#resources)
 
 <!-- tocstop -->
 
 ## Overview
 
-NeSVoR is a deep learning package for solving slice-to-volume reconstruction problems (i.e., reconstructing a 3D isotropic high-resolution volume from a set of motion-corrupted low-resolution slices) with application to fetal/neonatal brain MRI, which provides
+NeSVoR is a deep learning package for solving slice-to-volume reconstruction problems (i.e., reconstructing a 3D isotropic high-resolution volume from a set of motion-corrupted low-resolution slices) with application to fetal/neonatal MRI, which provides
 - Motion correction by mapping 2D slices to a 3D canonical space using [Slice-to-Volume Registration Transformers (SVoRT)](https://link.springer.com/chapter/10.1007/978-3-031-16446-0_1).
 - Volumetric reconstruction of multiple 2D slices using implicit neural representation ([NeSVoR](https://www.techrxiv.org/articles/preprint/NeSVoR_Implicit_Neural_Representation_for_Slice-to-Volume_Reconstruction_in_MRI/21398868/1)).
 
@@ -178,9 +174,13 @@ NeSVoR currently supports the following commands.
 
 `nesvor sample-slices`: simulate slices from a trained NeSVoR model.
 
-`nesvor segment`: fetal brain segmentation using a CNN.
+`nesvor segment-stack`: fetal brain segmentation using a CNN.
 
 `nesvor correct-bias-field`: bias field correction using the N4 algorihtm.
+
+`nesvor assess`:
+
+`nesvor segment-volume`
 
 run `nesvor <command> -h` for a full list of parameters of a command.
 
@@ -233,9 +233,15 @@ This enables the separation of registration and reconstruction. That is, you may
 
 #### Deformable NeSVoR
 
-NeSVoR can now reconstruct data with deformable (non-rigid) motion! To enable deformable motion, use the flag `--deformable`
+NeSVoR can now reconstruct data with deformable (non-rigid) motion! To enable deformable motion, use the flag `--deformable`. 
+```
+nesvor reconstruct \
+--deformable \
+......
+```
+This feature is still experimental.
 
-### Registration
+### Registration (Motion Correction)
 `register` takes mutiple stacks of slices as inputs, performs motion correction, and then saves the motion-corrected slices to a folder.
 ```
 nesvor register \
@@ -271,23 +277,53 @@ nesvor sample-slices \
 ```
 For example, after running `reconstruct`, you can use `sample-slices` to simulate slices at the motion-corrected locations and evaluate the reconstruction results by comparing the input slices and the simulated slices. 
 
-### Brain Segmentation 
-We integrate a deep learning based fetal brain segmentation model ([MONAIfbs](https://github.com/gift-surg/MONAIfbs)) into our pipeline. Check out their [repo](https://github.com/gift-surg/MONAIfbs) and [paper](https://arxiv.org/abs/2103.13314) for details. You may perform brain segmentation in the `reconstruct` command or using the `segment` command.
+### Preprocessing
+
+#### Brain Masking
+We integrate a deep learning based fetal brain segmentation model ([MONAIfbs](https://github.com/gift-surg/MONAIfbs)) into our pipeline to extract the fetal brain ROI from each input image. Check out their [repo](https://github.com/gift-surg/MONAIfbs) and [paper](https://arxiv.org/abs/2103.13314) for details. The `segment-stack` command generates brain mask for each input stack as follows.
 ```
-nesvor segment \
+nesvor segment-stack \
 --input-stacks stack-1.nii.gz ... stack-N.nii.gz \
 --output-stack-masks mask-1.nii.gz ... mask-N.nii.gz \
 ```
+You may also perform brain segmentation in the `reconstruct` command by setting `--segmentation`.
 
-### Bias Field Correction
-We also provide a wrapper of [the N4 algorithm in SimpleITK](https://simpleitk.readthedocs.io/en/master/link_N4BiasFieldCorrection_docs.html) for bias field correction.
+#### Bias Field Correction
+We also provide a wrapper of [the N4 algorithm in SimpleITK](https://simpleitk.readthedocs.io/en/master/link_N4BiasFieldCorrection_docs.html) for bias field correction. The `correct-bias-field` command correct the bias field in each input stack and output the corrected stacks.
 ```
 nesvor correct-bias-field \
 --input-stacks stack-1.nii.gz ... stack-N.nii.gz \
 --stack-masks mask-1.nii.gz ... mask-N.nii.gz \
 --output-corrected-stacks corrected-stack-1.nii.gz ... corrected-stack-N.nii.gz
 ```
+You may perform bias field correction in the `reconstruct` command by setting `--bias-field-correction`
 
+#### Stack Quality Assessment
+The `assess` command evalutes the image quality / motion of input stacks. This information can be used to find a template stack with the best quality or filter out low-quality data. 
+An example is as follows.
+```
+nesvor assess \
+--input-stacks stack-1.nii.gz ... stack-N.nii.gz \
+--stack-masks mask-1.nii.gz ... mask-N.nii.gz \
+--metric <metric> \
+--output-json result.json 
+```
+
+The provided metrics are:
+
+- `ncc`: cross correlaiton between adjacent slices
+- `matrix-rank`: A motion metric based on the rank of the data matrix as described in [(Kainz, B., et al. 2015)](https://ieeexplore.ieee.org/document/7064742)
+- `volume`: volume of the masked ROI
+- `iqa2d`: image quality score generated by a [2D CNN](https://github.com/daviddmc/fetal-IQA) (only for fetal brain)
+- `iqa3d`: image quality score generated by a [3D CNN](https://github.com/FNNDSC/pl-fetal-brain-assessment) (only for fetal brain)
+
+### 3D Brain Segmentation
+The coherent 3D volume generated by our pipeline can be used for downstream analysis, for example, segmentation or parcellation of 3D brain volume. The `segment-volume` command provides a wrapper of the TWAI segmentation algorithm for T2w fetal brain MRI. You may find more detials of this method in their [repo](https://github.com/LucasFidon/trustworthy-ai-fetal-brain-segmentation). To use this tool, you need to clone their repo and update the path in `config.py` (see the comment in `config.py` for details). An exmaple of `segment-volume` is as follows:
+```
+nesvor segment-volume
+--input-volume reconstructed-volume.nii.gz \
+--output-folder <path-to-save-segmentation>
+```
 
 <!-- ## Resources -->
 
@@ -318,3 +354,27 @@ NeSVoR
   doi={10.1109/TMI.2023.3236216}
 }
 ```
+
+Fetal IQA
+```
+@inproceedings{xu2020semi,
+  title={Semi-supervised learning for fetal brain MRI quality assessment with ROI consistency},
+  author={Xu, Junshen and Lala, Sayeri and Gagoski, Borjan and Abaci Turk, Esra and Grant, P Ellen and Golland, Polina and Adalsteinsson, Elfar},
+  booktitle={International Conference on Medical Image Computing and Computer-Assisted Intervention},
+  pages={386--395},
+  year={2020},
+  organization={Springer}
+}
+```
+
+## Resources
+
+This project has been greatly inspired by the following list of fantastic works.
+
+- [gift-surg/NiftyMIC](https://github.com/gift-surg/NiftyMIC)
+- [bkainz/fetalReconstruction](https://github.com/bkainz/fetalReconstruction)
+- [SVRTK](https://github.com/SVRTK/SVRTK)
+- [daviddmc/fetal-IQA](https://github.com/daviddmc/fetal-IQA)
+- [FNNDSC/pl-fetal-brain-assessment](https://github.com/FNNDSC/pl-fetal-brain-assessment)
+- [LucasFidon/trustworthy-ai-fetal-brain-segmentation](https://github.com/LucasFidon/trustworthy-ai-fetal-brain-segmentation)
+- [gift-surg/MONAIfbs](https://github.com/gift-surg/MONAIfbs)
