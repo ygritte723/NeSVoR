@@ -54,19 +54,21 @@ def iqa3d(stacks: List[Stack], batch_size=8, augmentation=True) -> List[float]:
             data_aug.append(pad)
         data_all.append(data_aug)
     stacked_data = np.array(data_all, dtype=np.float32)
-
+    weight_path = get_iqa3d_checkpoint()
     # run tf in another process, make sure tf release the GPU after use
     with multiprocessing.get_context("spawn").Pool(1) as pool:
-        scores = pool.apply(inference, (stacked_data, batch_size))
+        scores = pool.apply(inference, (stacked_data, batch_size, weight_path))
 
     return scores
 
 
-def inference(data: np.ndarray, batch_size: Optional[int]) -> List[float]:
+def inference(
+    data: np.ndarray, batch_size: Optional[int], weight_path: str
+) -> List[float]:
     # load model
     model = model_architecture()
     model.compile()
-    model.load_weights(get_iqa3d_checkpoint())
+    model.load_weights(weight_path)
     # predict
     L = data.shape[0]
     C = data.shape[1]
