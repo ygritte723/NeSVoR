@@ -27,8 +27,9 @@ This package is the accumulation of the following works:
 - [Usage](#usage)
   - [Reconstruction (Motion Correction)](#registration-motion-correction)
   - [Registration](#registration)
-  - [Sample Volume](#sample-volume)
-  - [Sample Slices](#sample-slices)
+  - [Sampling](#sampling)
+    - [Sample Volume](#sample-volume)
+    - [Sample Slices](#sample-slices)
   - [Preprocessing](#preprocessing)
     - [Brain Masking](#brain-masking)
     - [Bias Field Correction](#bias-field-correction) <!-- - [Resources](#resources) -->
@@ -258,7 +259,9 @@ nesvor register \
 
 Note: SVoRT can only be used for registering fetal brain images withou backgound.
 
-### Sample Volume
+### Sampling
+
+#### Sample Volume
 Upon training a NeSVoR model with the `reconstruct` command, you can sample a volume at arbitrary resolutions with the `sample-volume` command.
 ```
 nesvor sample-volume \
@@ -267,7 +270,7 @@ nesvor sample-volume \
 --output-resolution 0.5
 ```
 
-### Sample Slices
+#### Sample Slices
 You may sample slices from the model using the `sample-slices` command. For each slice in `<path-to-slices-folder>`, the command simulates a slice from the NeSVoR model at the corresponding slice location.
 ```
 nesvor sample-slices \
