@@ -73,8 +73,8 @@ You may follow this [guide](https://docs.nvidia.com/datacenter/cloud-native/cont
 #### Download and Run NeSVoR Image
 
 ```
-docker pull junshenxu/nesvor:v0.2.0
-docker run  --gpus '"device=0"' -it junshenxu/nesvor:v0.2.0
+docker pull junshenxu/nesvor:v0.3.0
+docker run  --gpus '"device=0"' -it junshenxu/nesvor:v0.3.0
 nesvor -h
 ```
 Note: our latest image was built with CUDA 11.7.
@@ -100,7 +100,7 @@ see [tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn) for more on prerequis
 Since the master branch might be messy sometimes, it is recommanded to clone a specific release.
 
 ```
-git clone https://github.com/daviddmc/NeSVoR --branch v0.2.0
+git clone https://github.com/daviddmc/NeSVoR --branch v0.3.0
 cd NeSVoR
 ```
 
