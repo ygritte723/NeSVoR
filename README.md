@@ -120,7 +120,6 @@ pip install git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/to
 pip install -e .
 ```
 </details>
-<br/>
 
 ## Quick Start
 
