@@ -548,7 +548,7 @@ def run_svort(
         logging.debug("time for running SVoRT: %f s" % (time.time() - time_start))
 
         time_start = time.time()
-        transforms_corrected, score_svort = correct_svort(
+        transforms_corrected, _ = correct_svort(
             transforms_svort,
             transforms_cropped_reset,
             stacks_cropped,
@@ -568,6 +568,33 @@ def run_svort(
             transforms_ori_reset,
             crop_idx,
         )
+
+        if vvr:
+            time_start = time.time()
+            volume_svort = reconstruct_from_stacks(
+                transforms_svort_full,
+                stacks_ori,
+                res_s,
+                s_thick,
+                res_r,
+                3,
+            )
+            score_svort = compute_score(
+                *simulated_ncc(
+                    [t[i] for t, i in zip(transforms_svort_full, crop_idx)],
+                    [s[i] for s, i in zip(stacks_ori, crop_idx)],
+                    volume_svort,
+                    res_s,
+                    s_thick,
+                    res_r,
+                )
+            )
+            logging.debug(
+                "time for evaluating SVoRT registration %f s"
+                % (time.time() - time_start)
+            )
+        else:
+            score_svort = float("inf")
     else:
         score_svort = float("-inf")
 
@@ -591,7 +618,8 @@ def run_svort(
                 res_s,
                 s_thick,
                 res_r,
-                3 if isinstance(model, SVoRT) else None,
+                # 3 if isinstance(model, SVoRT) else None,
+                3,
             )
 
             score_vvr = compute_score(

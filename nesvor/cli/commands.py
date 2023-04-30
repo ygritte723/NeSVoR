@@ -218,9 +218,28 @@ class Register(Command):
 
 
 def register(args: argparse.Namespace, data: List[Stack]) -> List[Slice]:
-    svort = args.registration == "svort" or args.registration == "svort-stack"
-    vvr = args.registration != "none"
-    force_vvr = args.registration == "svort-stack"
+    if args.registration == "svort":
+        svort = True
+        vvr = True
+        force_vvr = False
+    elif args.registration == "svort-stack":
+        svort = True
+        vvr = True
+        force_vvr = True
+    elif args.registration == "svort-only":
+        svort = True
+        vvr = False
+        force_vvr = False
+    elif args.registration == "stack":
+        svort = False
+        vvr = True
+        force_vvr = False
+    elif args.registration == "none":
+        svort = False
+        vvr = False
+        force_vvr = False
+    else:
+        raise ValueError("Unkown registration method!")
     force_scanner = args.scanner_space
     slices = svort_predict(
         data, args.device, args.svort_version, svort, vvr, force_vvr, force_scanner

@@ -455,11 +455,12 @@ def build_parser_svort() -> argparse.ArgumentParser:
         "--registration",
         default="svort",
         type=str,
-        choices=["svort", "svort-stack", "stack", "none"],
+        choices=["svort", "svort-only", "svort-stack", "stack", "none"],
         help=(
             "The type of registration method applied before reconstruction. "
-            "`svort`: the full SVoRT model; "
-            "`svort-stack`: only apply stack transformations of SVoRT; "
+            "`svort`: try SVoRT and stack-to-stack registration and choose the one with better NCC; "
+            "`svort-only`: only apply the SVoRT model"
+            "`svort-stack`: only apply the stack transformations of SVoRT; "
             "`stack`: stack-to-stack rigid registration; "
             "`none`: no registration. "
             "[Note] The SVoRT model can be only applied to fetal brain data. "
