@@ -80,8 +80,10 @@ see [tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn) for more on prerequis
 
 #### Get the NeSVoR Source
 
+Since the master branch might be messy sometimes, it is recommanded to clone a specific release.
+
 ```
-git clone https://github.com/daviddmc/NeSVoR
+git clone https://github.com/daviddmc/NeSVoR --branch v0.2.0
 cd NeSVoR
 ```
 
