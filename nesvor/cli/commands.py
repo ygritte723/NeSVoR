@@ -100,6 +100,11 @@ class Reconstruct(Command):
         else:
             # use input stacks
             check_len(self.args, "input_stacks", "stack_masks")
+            if self.args.thicknesses is not None:
+                if len(self.args.thicknesses) == 1:
+                    self.args.thicknesses = self.args.thicknesses * len(
+                        self.args.input_stacks
+                    )
             check_len(self.args, "input_stacks", "thicknesses")
         # output
         if self.args.output_volume is None and self.args.output_model is None:

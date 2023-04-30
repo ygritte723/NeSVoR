@@ -273,7 +273,11 @@ def build_parser_inputs(
                     "--thicknesses",
                     nargs="+",
                     type=float,
-                    help="Slice thickness of each input stack. Use the slice gap in the input stack if not provided.",
+                    help=(
+                        "Slice thickness of each input stack. "
+                        "If not provided, use the slice gap of the input stack. "
+                        "If only a single number is provided, Assume all input stacks have the same thickness."
+                    ),
                 )
             parser.add_argument(
                 "--stack-masks",
