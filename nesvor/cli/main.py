@@ -1,70 +1,24 @@
+"""nesvor entrypoints"""
+
+
 import argparse
 import sys
-from typing import Union
+from typing import Union, Sequence, Optional
 import torch
 import random
 import numpy as np
 import string
-from .commands import *
+from . import commands
+from .formatter import CommandHelpFormatter, MainHelpFormatter
 from ..utils import setup_logger
 from .. import __version__
-
-
-# formatter classes
-
-
-class Formatter(
-    argparse.ArgumentDefaultsHelpFormatter,
-    argparse.RawDescriptionHelpFormatter,
-):
-    def __init__(self, prog: str) -> None:
-        super().__init__(prog, max_help_position=50, width=None)
-
-
-class FormatterMetavar(Formatter, argparse.MetavarTypeHelpFormatter):
-    pass
-
-
-class SubcommandHelpFormatter(Formatter):
-    def _format_action(self, action):
-        parts = super()._format_action(action)
-        L = self._max_help_position - 2
-        if action.nargs == 0:
-            parts_list = parts.split()
-            i = 0
-            while parts_list[i][0] == "-":
-                i += 1
-            parts1 = " ".join(parts_list[:i])
-            parts2 = " ".join(parts_list[i:])
-            parts = "  " + parts1 + " " * (L - len(parts1)) + parts2 + "\n"
-        if action.nargs == argparse.PARSER:
-            parts_list = parts.split("\n")[1:]
-            parts_list_combined = []
-            i = 0
-            while i < len(parts_list):
-                if not parts_list[i]:
-                    i += 1
-                elif len(parts_list[i].split()) > 1:
-                    parts_list_combined.append(parts_list[i])
-                    i += 1
-                else:
-                    parts_list_combined.append(parts_list[i] + " " + parts_list[i + 1])
-                    i += 2
-            for i in range(len(parts_list_combined)):
-                parts_list_list = parts_list_combined[i].split()
-                parts1 = parts_list_list[0]
-                parts2 = " ".join(parts_list_list[1:])
-                parts_list_combined[i] = (
-                    "  " + parts1 + " " * (L - len(parts1)) + parts2
-                )
-            parts = "\n".join(parts_list_combined) + "\n"
-        return parts
 
 
 # parents parsers
 
 
 def build_parser_training() -> argparse.ArgumentParser:
+    """arguments related to the training of INR"""
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("model architecture")
     # hash grid encoding
@@ -292,6 +246,7 @@ def build_parser_inputs(
     segmentation: bool = False,
     bias_field: bool = False,
 ) -> argparse.ArgumentParser:
+    """arguments related to input data"""
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("input")
     # stack input
@@ -378,6 +333,7 @@ def build_parser_outputs(
     output_json: Union[bool, str] = True,
     **kwargs,
 ) -> argparse.ArgumentParser:
+    """arguments related to ouptuts"""
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("output")
     # output volume
@@ -485,6 +441,7 @@ def build_parser_outputs(
 
 
 def build_parser_svort() -> argparse.ArgumentParser:
+    """arguments related to rigid registration before reconstruction"""
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("rigid registration")
     parser.add_argument(
@@ -521,6 +478,7 @@ def build_parser_svort() -> argparse.ArgumentParser:
 
 
 def build_parser_segmentation(optional: bool = False) -> argparse.ArgumentParser:
+    """arguments related to 2D brain segmentaion/masking"""
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("brain segmentation")
     if optional:
@@ -561,6 +519,7 @@ def build_parser_segmentation(optional: bool = False) -> argparse.ArgumentParser
 def build_parser_bias_field_correction(
     optional: bool = False,
 ) -> argparse.ArgumentParser:
+    """arguments related to N4 bias field correction"""
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("N4 bias field correction")
     if optional:
@@ -630,6 +589,7 @@ def build_parser_bias_field_correction(
 
 
 def build_parser_assessment(**kwargs) -> argparse.ArgumentParser:
+    """arguments related to image quality and motion assessment of input data"""
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("stack assessment")
     parser.add_argument(
@@ -672,6 +632,7 @@ def build_parser_assessment(**kwargs) -> argparse.ArgumentParser:
 
 
 def build_parser_volume_segmentation() -> argparse.ArgumentParser:
+    """arguments related to 3D brain segmentation"""
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("TWAI brain segmentation")
     parser.add_argument(
@@ -695,6 +656,7 @@ def build_parser_volume_segmentation() -> argparse.ArgumentParser:
 
 
 def build_parser_common() -> argparse.ArgumentParser:
+    """miscellaneous arguments"""
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("common")
     parser.add_argument("--device", type=int, default=0, help="Id of the GPU to use.")
@@ -712,18 +674,40 @@ def build_parser_common() -> argparse.ArgumentParser:
 
 
 def update_defaults(parser: argparse.ArgumentParser, **kwargs):
+    # a helper function to update the default values in a parser
     parser.set_defaults(**kwargs)
 
 
 # command parsers
 
 
+def add_subcommand(
+    subparsers: argparse._SubParsersAction,
+    name: str,
+    help: Optional[str],
+    description: Optional[str],
+    parents: Sequence,
+) -> argparse.ArgumentParser:
+    # a helper function to create a subcommand
+    parser = subparsers.add_parser(
+        name=name,
+        help=help,
+        description=description,
+        parents=parents,
+        formatter_class=CommandHelpFormatter,
+        add_help=False,
+    )
+    parser.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
+    return parser
+
+
 def build_command_reconstruct(
     subparsers: argparse._SubParsersAction,
 ) -> argparse.ArgumentParser:
     # reconstruct
-    parser_reconstruct = subparsers.add_parser(
-        "reconstruct",
+    parser_reconstruct = add_subcommand(
+        subparsers,
+        name="reconstruct",
         help="slice-to-volume reconstruction using NeSVoR",
         description=(
             "Use the NeSVoR algorithm to reconstuct a high-quality and coherent 3D volume from multiple stacks of 2D slices. "
@@ -749,11 +733,6 @@ def build_command_reconstruct(
             build_parser_training(),
             build_parser_common(),
         ],
-        formatter_class=FormatterMetavar,
-        add_help=False,
-    )
-    parser_reconstruct.add_argument(
-        "-h", "--help", action="help", help=argparse.SUPPRESS
     )
     return parser_reconstruct
 
@@ -762,8 +741,9 @@ def build_command_sample_volume(
     subparsers: argparse._SubParsersAction,
 ) -> argparse.ArgumentParser:
     # sample-volume
-    parser_sample_volume = subparsers.add_parser(
-        "sample-volume",
+    parser_sample_volume = add_subcommand(
+        subparsers,
+        name="sample-volume",
         help="sample a volume from a trained NeSVoR model",
         description="sample a volume from a trained NeSVoR model",
         parents=[
@@ -775,11 +755,6 @@ def build_command_sample_volume(
             ),
             build_parser_common(),
         ],
-        formatter_class=FormatterMetavar,
-        add_help=False,
-    )
-    parser_sample_volume.add_argument(
-        "-h", "--help", action="help", help=argparse.SUPPRESS
     )
     return parser_sample_volume
 
@@ -788,8 +763,9 @@ def build_command_sample_slices(
     subparsers: argparse._SubParsersAction,
 ) -> argparse.ArgumentParser:
     # sample-slices
-    parser_sample_slices = subparsers.add_parser(
-        "sample-slices",
+    parser_sample_slices = add_subcommand(
+        subparsers,
+        name="sample-slices",
         help="sample slices from a trained NeSVoR model",
         description="sample slices from a trained NeSVoR model",
         parents=[
@@ -797,11 +773,6 @@ def build_command_sample_slices(
             build_parser_outputs(simulate_slices="required"),
             build_parser_common(),
         ],
-        formatter_class=FormatterMetavar,
-        add_help=False,
-    )
-    parser_sample_slices.add_argument(
-        "-h", "--help", action="help", help=argparse.SUPPRESS
     )
     return parser_sample_slices
 
@@ -810,8 +781,9 @@ def build_command_register(
     subparsers: argparse._SubParsersAction,
 ) -> argparse.ArgumentParser:
     # register
-    parser_register = subparsers.add_parser(
-        "register",
+    parser_register = add_subcommand(
+        subparsers,
+        name="register",
         help="slice-to-volume registration",
         description="Perform inital (rigid) motion correction using SVoRT (only for fetal brain) or stack-to-stack registration.",
         parents=[
@@ -820,10 +792,7 @@ def build_command_register(
             build_parser_svort(),
             build_parser_common(),
         ],
-        formatter_class=FormatterMetavar,
-        add_help=False,
     )
-    parser_register.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
     return parser_register
 
 
@@ -831,8 +800,9 @@ def build_command_segment_stack(
     subparsers: argparse._SubParsersAction,
 ) -> argparse.ArgumentParser:
     # segment-stack
-    parser_segment_stack = subparsers.add_parser(
-        "segment-stack",
+    parser_segment_stack = add_subcommand(
+        subparsers,
+        name="segment-stack",
         help="2D fetal brain segmentation/masking",
         description=(
             "Segment the fetal brain ROI from each stack using a CNN model (MONAIfbs). "
@@ -844,11 +814,6 @@ def build_command_segment_stack(
             build_parser_segmentation(optional=False),
             build_parser_common(),
         ],
-        formatter_class=FormatterMetavar,
-        add_help=False,
-    )
-    parser_segment_stack.add_argument(
-        "-h", "--help", action="help", help=argparse.SUPPRESS
     )
     return parser_segment_stack
 
@@ -857,8 +822,9 @@ def build_command_correct_bias_field(
     subparsers: argparse._SubParsersAction,
 ) -> argparse.ArgumentParser:
     # correct-bias-field
-    parser_correct_bias_field = subparsers.add_parser(
-        "correct-bias-field",
+    parser_correct_bias_field = add_subcommand(
+        subparsers,
+        name="correct-bias-field",
         help="bias field correction",
         description="Perform bias field correction for each input stack with the N4 algorithm.",
         parents=[
@@ -867,11 +833,6 @@ def build_command_correct_bias_field(
             build_parser_bias_field_correction(optional=False),
             build_parser_common(),
         ],
-        formatter_class=FormatterMetavar,
-        add_help=False,
-    )
-    parser_correct_bias_field.add_argument(
-        "-h", "--help", action="help", help=argparse.SUPPRESS
     )
     return parser_correct_bias_field
 
@@ -880,8 +841,9 @@ def build_command_assess(
     subparsers: argparse._SubParsersAction,
 ) -> argparse.ArgumentParser:
     # assess
-    parser_assess = subparsers.add_parser(
-        "assess",
+    parser_assess = add_subcommand(
+        subparsers,
+        name="assess",
         help="quality assessment of input stacks",
         description=(
             "Assess the quality and motion of each input stack. "
@@ -893,10 +855,7 @@ def build_command_assess(
             build_parser_assessment(metric="ncc"),
             build_parser_common(),
         ],
-        formatter_class=FormatterMetavar,
-        add_help=False,
     )
-    parser_assess.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
     return parser_assess
 
 
@@ -904,8 +863,9 @@ def build_command_segment_volume(
     subparsers: argparse._SubParsersAction,
 ) -> argparse.ArgumentParser:
     # segment-volume
-    parser_segment_volume = subparsers.add_parser(
-        "segment-volume",
+    parser_segment_volume = add_subcommand(
+        subparsers,
+        name="segment-volume",
         help="3D fetal brain segmentation",
         description=(
             "TWAI brain segmentation of reconstructed 3D volume. Segmentation labels: "
@@ -925,49 +885,44 @@ def build_command_segment_volume(
             build_parser_outputs(output_json=False, output_folder="required"),
             build_parser_common(),
         ],
-        formatter_class=FormatterMetavar,
-        add_help=False,
-    )
-    parser_segment_volume.add_argument(
-        "-h", "--help", action="help", help=argparse.SUPPRESS
     )
     return parser_segment_volume
 
 
 def main() -> None:
+    # main parser
     parser = argparse.ArgumentParser(
         prog="nesvor",
         description=f"NeSVoR: a toolkit for neural slice-to-volume reconstruction (v{__version__})",
         epilog="Run 'nesvor COMMAND --help' for more information on a command.\n\n"
         + "To learn more about NeSVoR, check out our repo at "
         + "https://github.com/daviddmc/NeSVoR",
-        formatter_class=SubcommandHelpFormatter,
+        formatter_class=MainHelpFormatter,
     )
     parser.add_argument(
         "-v", "--version", action="version", version="%(prog)s v" + __version__
     )
+    # commands
     subparsers = parser.add_subparsers(
         title="commands", metavar="COMMAND", dest="command"
     )
-
-    parser_reconstruct = build_command_reconstruct(subparsers)
-    parser_sample_volume = build_command_sample_volume(subparsers)
-    parser_sample_slices = build_command_sample_slices(subparsers)
-    parser_register = build_command_register(subparsers)
-    parser_segment_stack = build_command_segment_stack(subparsers)
-    parser_correct_bias_field = build_command_correct_bias_field(subparsers)
-    parser_assess = build_command_assess(subparsers)
-    parser_segment_volume = build_command_segment_volume(subparsers)
-
-    # parse arguments
+    build_command_reconstruct(subparsers)
+    build_command_sample_volume(subparsers)
+    build_command_sample_slices(subparsers)
+    build_command_register(subparsers)
+    build_command_segment_stack(subparsers)
+    build_command_correct_bias_field(subparsers)
+    build_command_assess(subparsers)
+    build_command_segment_volume(subparsers)
+    # print help if no args are provided
     if len(sys.argv) == 1:
         parser.print_help(sys.stdout)
         return
     if len(sys.argv) == 2:
-        parser_name = "parser_" + sys.argv[-1].replace("-", "_")
-        if parser_name in locals():
-            locals()[parser_name].print_help(sys.stdout)
+        if sys.argv[-1] in subparsers.choices:
+            subparsers.choices[sys.argv[-1]].print_help(sys.stdout)
             return
+    # parse args and setup
     args = parser.parse_args()
     args.device = torch.device(args.device)
     if args.seed is not None:
@@ -977,8 +932,9 @@ def main() -> None:
     if args.debug:
         args.verbose = 2
     setup_logger(args.output_log, args.verbose)
+    # execute command
     command_class = "".join(string.capwords(w) for w in args.command.split("-"))
-    globals()[command_class](args).main()
+    getattr(commands, command_class)(args).main()
 
 
 if __name__ == "__main__":
