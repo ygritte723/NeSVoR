@@ -173,21 +173,21 @@ nesvor reconstruct \
 
 NeSVoR currently supports the following commands.
 
-`nesvor reconstruct`: reconstruct a 3D volume (i.e., train a NeSVoR model) from either multiple stacks of slices (NIfTI) or a set of motion-corrected slices (the output of `register`). It can also perform multiple preprocessing steps, including brain segmentation, bias field correction, and registration, by setting the corrsponding flags.
+[`nesvor reconstruct`](#reconstruction): reconstruct a 3D volume (i.e., train a NeSVoR model) from either multiple stacks of slices (NIfTI) or a set of motion-corrected slices (the output of `register`). It can also perform multiple preprocessing steps, including brain segmentation, bias field correction, and registration, by setting the corrsponding flags.
 
-`nesvor register`: register stacks of slices using a pretrained SVoRT model.
+[`nesvor register`](#registration-motion-correction): register stacks of slices using a pretrained SVoRT model or stack-to-stack registration.
 
-`nesvor sample-volume`: sample a volume from a trained NeSVoR model.
+[`nesvor sample-volume`](#sample-volume): sample a volume from a trained NeSVoR model.
 
-`nesvor sample-slices`: simulate slices from a trained NeSVoR model.
+[`nesvor sample-slices`](#sample-slices): simulate slices from a trained NeSVoR model.
 
-`nesvor segment-stack`: fetal brain segmentation using a CNN.
+[`nesvor segment-stack`](#brain-masking): 2D fetal brain segmentation/masking in input stacks.
 
-`nesvor correct-bias-field`: bias field correction using the N4 algorihtm.
+[`nesvor correct-bias-field`](#bias-field-correction): bias field correction using the N4 algorihtm.
 
-`nesvor assess`:
+[`nesvor assess`](#stack-quality-assessment): quality and motion assessment of input stacks.
 
-`nesvor segment-volume`
+[`nesvor segment-volume`](#3d-brain-segmentation): 3D fetal brain segmentation in reconstructed volumes.
 
 run `nesvor <command> -h` for a full list of parameters of a command.
 
