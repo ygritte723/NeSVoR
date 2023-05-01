@@ -75,5 +75,5 @@ def inference(
     data = np.array(data, dtype=np.float32).reshape((L * C, *INPUT_SHAPE, 1))
     predict_all = model.predict(data, batch_size=batch_size).reshape((L, C))
     predict_all = np.flip(np.sort(predict_all, -1), -1)
-    predict_all = predict_all[:, :2].mean(axis=-1)
+    predict_all = predict_all[:, :4].mean(axis=-1)  # 2
     return [float(score) for score in predict_all]
