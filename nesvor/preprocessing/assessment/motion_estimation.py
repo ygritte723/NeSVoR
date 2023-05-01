@@ -1,21 +1,21 @@
 import torch
 from typing import List
-from ..image import Stack
-from ..utils import ncc_loss
+from ...image import Stack
+from ...utils import ncc_loss
 
 
-def rank(
+def matrix_rank(
     stacks: List[Stack], threshold: float = 0.1, rank_only: bool = False
 ) -> List[float]:
     scores: List[float] = []
     for stack in stacks:
         masked_slices = stack.slices * stack.mask.float()
-        score = _rank(masked_slices.flatten(1, -1), threshold, rank_only)
+        score = _matrix_rank(masked_slices.flatten(1, -1), threshold, rank_only)
         scores.append(score)
     return scores
 
 
-def _rank(mat: torch.Tensor, threshold: float, rank_only: bool) -> float:
+def _matrix_rank(mat: torch.Tensor, threshold: float, rank_only: bool) -> float:
     s = torch.linalg.svdvals(mat)
     s = s / s[0]
     R = torch.count_nonzero(s > 1e-6)

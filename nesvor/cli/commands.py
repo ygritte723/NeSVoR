@@ -13,8 +13,8 @@ from ..nesvor.sample import sample_volume, sample_slices
 from .io import outputs, inputs
 from ..utils import makedirs, log_args, log_result
 from ..preprocessing.masking import brain_segmentation
-from ..preprocessing import bias_field, motion_estimation
-from ..preprocessing.iqa import iqa2d, iqa3d
+from ..preprocessing import bias_field
+from ..preprocessing.assessment import compute_metric, sort_and_filter
 from ..segmentation import twai
 
 
@@ -345,62 +345,26 @@ def assess(
     args: argparse.Namespace, stacks: List[Stack], print_results=False
 ) -> Tuple[List[Stack], List[Dict[str, Any]]]:
     metric = args.metric
-    descending = True
-    if metric == "ncc":
-        scores = motion_estimation.ncc(stacks)
-    elif metric == "matrix-rank":
-        scores = motion_estimation.rank(stacks)
-        descending = False
-    elif metric == "volume":
-        scores = [
-            int(
-                stack.mask.float().sum().item()
-                * stack.resolution_x
-                * stack.resolution_y
-                * stack.gap
-            )
-            for stack in stacks
-        ]
-    elif metric == "iqa2d":
-        scores = iqa2d(stacks, args.device)
-    elif metric == "iqa3d":
-        scores = iqa3d(stacks)
-    elif metric == "none":
+    if metric == "none":
         return stacks, []
-    else:
-        raise ValueError("unkown metric for stack assessment")
 
-    n_keep = len(stacks)
-    if args.filter_method == "top":
-        n_keep = min(n_keep, int(args.cutoff))
-    elif args.filter_method == "bottom":
-        n_keep = max(0, len(stacks) - int(args.cutoff))
-    elif args.filter_method == "percentage":
-        n_keep = len(stacks) - int(len(stacks) * min(max(0, args.cutoff), 1))
-    elif args.filter_method == "threshold":
-        if descending:
-            n_keep = sum(score >= args.cutoff for score in scores)
-        else:
-            n_keep = sum(score <= args.cutoff for score in scores)
-    elif args.filter_method == "none":
-        pass
-    else:
-        raise ValueError("unknown filter method")
-
-    sorter = np.argsort(-np.array(scores) if descending else scores)
-    inv = np.empty(sorter.size, dtype=np.intp)
-    inv[sorter] = np.arange(sorter.size, dtype=np.intp)
+    scores, descending = compute_metric(stacks, metric, args.device)
+    filtered_stacks, ranks, excludeds = sort_and_filter(
+        stacks, scores, descending, args.filter_method, args.cutoff
+    )
 
     results = []
-    for i, (score, rank, name) in enumerate(zip(scores, inv, args.input_stacks)):
+    for i, (score, rank, excluded, name) in enumerate(
+        zip(scores, ranks, excludeds, args.input_stacks)
+    ):
         name = name.replace(".gz", "").replace(".nii", "")
         results.append(
             dict(
                 input_stack=i,
                 name=name,
                 score=score,
-                rank=int(rank),
-                excluded=bool(rank >= n_keep),
+                rank=rank,
+                excluded=excluded,
             )
         )
 
@@ -425,7 +389,6 @@ def assess(
     else:
         logging.info(result_log)
 
-    filtered_stacks = [stacks[i] for i in sorter[:n_keep]]
     return filtered_stacks, results
 
 

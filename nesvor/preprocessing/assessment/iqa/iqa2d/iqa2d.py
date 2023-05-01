@@ -4,8 +4,8 @@ import numpy as np
 import torch
 import logging
 from .architectures import resnet34
-from ....image import Stack
-from .... import CHECKPOINT_DIR, IQA2D_URL
+from .....image import Stack
+from ..... import CHECKPOINT_DIR, IQA2D_URL
 
 
 def get_iqa2d_checkpoint() -> str:

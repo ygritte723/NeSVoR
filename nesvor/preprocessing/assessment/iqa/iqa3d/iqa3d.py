@@ -5,8 +5,8 @@ import torch
 import logging
 import multiprocessing
 from .architectures import model_architecture, INPUT_SHAPE
-from ....image import Stack
-from .... import CHECKPOINT_DIR, IQA3D_URL
+from .....image import Stack
+from ..... import CHECKPOINT_DIR, IQA3D_URL
 
 
 def get_iqa3d_checkpoint() -> str:

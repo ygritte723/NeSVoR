@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"adapted from https://github.com/FNNDSC/pl-fetal-brain-assessment/blob/main/fetal_brain_assessment/resnet_architecture.py"
+"""
+adapted from https://github.com/FNNDSC/pl-fetal-brain-assessment/blob/main/fetal_brain_assessment/resnet_architecture.py
+"""
 
 
 INPUT_SHAPE = (217, 178, 60)

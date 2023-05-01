@@ -638,7 +638,10 @@ def build_parser_volume_segmentation() -> argparse.ArgumentParser:
     parser.add_argument(
         "--ga",
         type=float,
-        help="Gestational age at the time of acquisition of the fetal brain 3D MRI to be segmented.",
+        help=(
+            "Gestational age at the time of acquisition of the fetal brain 3D MRI to be segmented."
+            "If not provided, will be estimated based on the volume of the brain ROI."
+        ),
     )
     parser.add_argument(
         "--condition",
