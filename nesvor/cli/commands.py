@@ -392,19 +392,22 @@ def assess(
     inv[sorter] = np.arange(sorter.size, dtype=np.intp)
 
     results = []
-    for i, (score, rank) in enumerate(zip(scores, inv)):
+    for i, (score, rank, name) in enumerate(zip(scores, inv, args.input_stacks)):
+        name = name.replace(".gz", "").replace(".nii", "")
         results.append(
             dict(
                 input_stack=i,
+                name=name,
                 score=score,
                 rank=int(rank),
                 excluded=bool(rank >= n_keep),
             )
         )
 
-    template = "\n%15s %15s %15s %15s"
+    template = "\n%15s %25s %15s %15s %15s"
     result_log = "stack assessment results (metric = %s):" % metric + template % (
         "stack",
+        "name",
         "score " + "(" + ("\u2191" if descending else "\u2193") + ")",
         "rank",
         "",
@@ -412,6 +415,7 @@ def assess(
     for i, item in enumerate(results):
         result_log += template % (
             item["input_stack"],
+            item["name"] if len(item["name"]) <= 20 else ("..." + item["name"][-17:]),
             ("%1.4f" if isinstance(item["score"], float) else "%d") % item["score"],
             item["rank"],
             "excluded" if item["excluded"] else "",
