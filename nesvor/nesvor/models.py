@@ -23,7 +23,18 @@ D_REG = "deformReg"
 def build_encoding(**config):
     n_input_dims = config.pop("n_input_dims")
     dtype = config.pop("dtype")
-    return tcnn.Encoding(n_input_dims=n_input_dims, encoding_config=config, dtype=dtype)
+    try:
+        encoding = tcnn.Encoding(
+            n_input_dims=n_input_dims, encoding_config=config, dtype=dtype
+        )
+    except RuntimeError as e:
+        if "TCNN was not compiled with half-precision support" in str(e):
+            logging.error(
+                "TCNN was not compiled with half-precision support! "
+                "Try using --single-precision in the nesvor command! "
+            )
+        raise e
+    return encoding
 
 
 def build_network(**config):
