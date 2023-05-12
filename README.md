@@ -85,14 +85,33 @@ We recommend to use our docker image to run `nesvor`.
 
 You may follow this [guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) to install Docker and NVIDIA Container Toolkit
 
-#### Download and Run NeSVoR Image
+#### Download NeSVoR Image
 
 ```
-docker pull junshenxu/nesvor:v0.3.0
-docker run  --gpus '"device=0"' -it junshenxu/nesvor:v0.3.0
-nesvor -h
+docker pull junshenxu/nesvor
 ```
 Note: our latest image was built with CUDA 11.7.
+
+#### Run NeSVoR
+
+You may run a container in an iterative way.
+
+```
+docker run -it --gpus all junshenxu/nesvor
+nesvor -h
+```
+
+You may also run the `nesvor` command directly as follows.
+
+```
+docker run --rm --gpus all \
+    -v <path-to-inputs>:/incoming:ro -v <path-to-outputs>:/outgoing:rw \
+    junshenxu/nesvor \
+    nesvor reconstruct \
+    --input-stacks /incoming/stack-1.nii.gz ... /incoming/stack-N.nii.gz \
+    --thicknesses <thick-1> ... <thick-N> \
+    --output-volume /outgoing/volume.nii.gz
+```
 
 ### From Source
 
