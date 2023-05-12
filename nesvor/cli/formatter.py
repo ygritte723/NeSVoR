@@ -28,6 +28,11 @@ class MainHelpFormatter(Formatter):
             parts1 = " ".join(parts_list[:i])
             parts2 = " ".join(parts_list[i:])
             parts = "  " + parts1 + " " * (L - len(parts1)) + parts2 + "\n"
+        if action.nargs is None and action.required:
+            parts_list = parts.split()
+            parts1 = parts_list[0]
+            parts2 = " ".join(parts_list[1:])
+            parts = "  " + parts1 + " " * (L - len(parts1)) + parts2 + "\n"
         if action.nargs == argparse.PARSER:
             parts_list = parts.split("\n")[1:]
             parts_list_combined = []

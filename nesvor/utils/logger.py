@@ -66,7 +66,14 @@ def log_args(args: Namespace):
     )
 
 
+_initialized = False
+
+
 def setup_logger(filename: Optional[str], verbose: int) -> None:
+    global _initialized
+    if _initialized:
+        return
+    _initialized = True
     if verbose == 0:
         level = logging.WARNING
     elif verbose == 1:
