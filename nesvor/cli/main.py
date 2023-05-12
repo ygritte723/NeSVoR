@@ -3,12 +3,10 @@
 
 import sys
 import torch
-import random
-import numpy as np
 import string
 from . import commands
 from .parsers import main_parser
-from ..utils import setup_logger
+from ..utils import setup_logger, set_seed
 from .. import __version__
 
 
@@ -25,10 +23,7 @@ def main() -> None:
     # parse args and setup
     args = parser.parse_args()
     args.device = torch.device(args.device)
-    if args.seed is not None:
-        torch.manual_seed(args.seed)
-        np.random.seed(args.seed)
-        random.seed(args.seed)
+    set_seed(args.seed)
     if args.debug:
         args.verbose = 2
     setup_logger(args.output_log, args.verbose)

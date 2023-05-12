@@ -1,6 +1,6 @@
 import argparse
 from typing import Union, Sequence, Optional, Tuple
-from .formatter import CommandHelpFormatter, MainHelpFormatter
+from .formatters import CommandHelpFormatter, MainHelpFormatter
 from .. import __version__
 
 

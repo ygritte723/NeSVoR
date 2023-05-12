@@ -4,6 +4,15 @@ import torch.nn.functional as F
 import collections
 from argparse import Namespace
 import os
+import random
+import numpy as np
+
+
+def set_seed(seed: Optional[int]) -> None:
+    if seed is not None:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        random.seed(seed)
 
 
 def makedirs(path: Union[str, Iterable[str]]) -> None:
@@ -33,7 +42,6 @@ def meshgrid(
     device=None,
     stack_output: bool = True,
 ):
-
     assert len(shape_xyz) == len(resolution_xyz)
     if min_xyz is None:
         min_xyz = tuple(-(s - 1) * r / 2 for s, r in zip(shape_xyz, resolution_xyz))
