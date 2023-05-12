@@ -18,11 +18,14 @@ This package is the accumulation of the following works:
   - [Slice-to-Volume Registration Transformers (SVoRT)](#slice-to-volume-registration-transformers-svort)
   - [Neural Slice-to-Volume Reconstruction (NeSVoR)](#neural-slice-to-volume-reconstruction-nesvor) -->
 - [Overview](#overview)
+  - [Methods](#methods)
+  - [Pipeline](#pipeline)
 - [Installation](#installation)
   - [Docker Image](#docker-image)
   - [From Source](#from-source)
 - [Quick Start](#quick-start)
   - [Fetal Brain Reconstruction](#fetal-brain-reconstruction)
+  - [Neonatal Brain Reconstruction](#neonatal-brain-reconstruction)
   - [Fetal Body/Uterus Reconstruction](#fetal-bodyuterus-reconstruction)
 - [Usage](#usage)
   - [Reconstruction ](#reconstruction)
@@ -42,6 +45,8 @@ This package is the accumulation of the following works:
 
 ## Overview
 
+### Methods
+
 NeSVoR is a deep learning package for solving slice-to-volume reconstruction problems (i.e., reconstructing a 3D isotropic high-resolution volume from a set of motion-corrupted low-resolution slices) with application to fetal/neonatal MRI, which provides
 - Motion correction by mapping 2D slices to a 3D canonical space using [Slice-to-Volume Registration Transformers (SVoRT)](https://link.springer.com/chapter/10.1007/978-3-031-16446-0_1).
 - Volumetric reconstruction of multiple 2D slices using implicit neural representation ([NeSVoR](https://www.techrxiv.org/articles/preprint/NeSVoR_Implicit_Neural_Representation_for_Slice-to-Volume_Reconstruction_in_MRI/21398868/1)).
@@ -59,6 +64,16 @@ NeSVoR is a deep learning package for solving slice-to-volume reconstruction pro
    <img src="./images/NeSVoR.png" align="center" width="900">
 </p>
 <p align="center">Figure 2. NeSVoR: A) The forward imaging model in NeSVoR. B) The architecture of the implicit neural network in NeSVoR.<p align="center">
+
+### Pipeline
+
+To make our reconstruction tools more handy, we incorporate several preprocessing and downstream analysis tools in this package.
+The next figure shows our overall reconstruction pipeline.
+
+<p align="center">
+   <img src="./images/pipeline.png" align="center" width="900">
+</p>
+<p align="center">Figure 3. The reconstruction pipeline.<p align="center">
 
 ## Installation
 
@@ -144,6 +159,27 @@ nesvor reconstruct \
 --bias-field-correction
 ```
 
+### Neonatal Brain Reconstruction
+
+This example reconstruct a 3D neonatal brain from mutiple stacks of 2D images in the following steps:
+
+1. Removal background (air) with Otsu thresholding.
+2. Correct bias field in each stack using the N4 algorithm.
+3. Register slices using SVoRT.
+4. Reconstruct a 3D volume using NeSVoR.
+
+```
+nesvor reconstruct \
+--input-stacks stack-1.nii.gz ... stack-N.nii.gz \
+--thicknesses <thick-1> ... <thick-N> \
+--output-volume volume.nii.gz \
+--output-resolution 0.8 \
+--registration svort \
+--svort-version v2\
+--otsu-thresholding \
+--bias-field-correction
+```
+
 ### Fetal Body/Uterus Reconstruction
 
 This is an example for deformable NeSVoR which consists of the following steps:
@@ -173,7 +209,7 @@ nesvor reconstruct \
 
 NeSVoR currently supports the following commands.
 
-[`nesvor reconstruct`](#reconstruction): reconstruct a 3D volume (i.e., train a NeSVoR model) from either multiple stacks of slices (NIfTI) or a set of motion-corrected slices (the output of `register`). It can also perform multiple preprocessing steps, including brain segmentation, bias field correction, and registration, by setting the corrsponding flags.
+[`nesvor reconstruct`](#reconstruction): reconstruct a 3D volume (i.e., train a NeSVoR model) from either multiple stacks of slices (NIfTI) or a set of motion-corrected slices (the output of `register`). It can also perform multiple preprocessing steps, including brain segmentation, bias field correction, and registration.
 
 [`nesvor register`](#registration-motion-correction): register stacks of slices using a pretrained SVoRT model or stack-to-stack registration.
 
