@@ -276,6 +276,11 @@ def build_parser_inputs(
                 action="store_true",
                 help="Only consider the region defined by the intersection of input stacks. Will be ignored if --volume-mask is provided.",
             )
+            parser.add_argument(
+                "--otsu-thresholding",
+                action="store_true",
+                help="Apply Otsu thresholding to each input stack.",
+            )
     # slices input
     if input_slices:
         parser.add_argument(

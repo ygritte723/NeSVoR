@@ -2,16 +2,19 @@ import torch
 from typing import Dict, Tuple, Any, Optional
 from argparse import Namespace
 import json
+import logging
 from ..image import Volume, save_slices, load_slices, load_stack, load_volume
 from ..nesvor.models import INR
 from ..utils import merge_args
 from ..preprocessing.masking.intersection import stack_intersect
+from ..preprocessing.masking.thresholding import otsu_thresholding
 
 
 def inputs(args: Namespace) -> Tuple[Dict, Namespace]:
     input_dict: Dict[str, Any] = dict()
     if getattr(args, "input_stacks", None) is not None:
         input_stacks = []
+        logging.info("loading stacks")
         for i, f in enumerate(args.input_stacks):
             stack = load_stack(
                 f,
@@ -25,19 +28,27 @@ def inputs(args: Namespace) -> Tuple[Dict, Namespace]:
             input_stacks.append(stack)
         volume_mask: Optional[Volume]
         if getattr(args, "volume_mask", None):
+            logging.info("loading volume mask")
             volume_mask = load_volume(args.volume_mask, device=args.device)
         elif getattr(args, "stacks_intersection", False):
+            logging.info("creating volume mask using intersection of stacks")
             volume_mask = stack_intersect(input_stacks, box=True)
         else:
             volume_mask = None
         if volume_mask is not None:
+            logging.info("applying volume mask")
             for stack in input_stacks:
                 stack.apply_volume_mask(volume_mask)
+        if getattr(args, "otsu_thresholding", False):
+            logging.info("applying otsu thresholding")
+            input_stacks = otsu_thresholding(input_stacks)
         input_dict["input_stacks"] = input_stacks
         input_dict["volume_mask"] = volume_mask
     if getattr(args, "input_slices", None) is not None:
+        logging.info("loading slices")
         input_dict["input_slices"] = load_slices(args.input_slices, args.device)
     if getattr(args, "input_model", None) is not None:
+        logging.info("loading model")
         cp = torch.load(args.input_model, map_location=args.device)
         input_dict["model"] = INR(cp["model"]["bounding_box"], cp["args"])
         input_dict["model"].load_state_dict(cp["model"])
