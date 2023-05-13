@@ -76,6 +76,17 @@ class Image(object):
             output_volume = self.image
         save_nii_volume(path, output_volume, affine)
 
+    def save_mask(self, path: str) -> None:
+        affine = transformation2affine(
+            self.image,
+            self.transformation,
+            float(self.resolution_x),
+            float(self.resolution_y),
+            float(self.resolution_z),
+        )
+        output_volume = self.mask.to(self.image.dtype)
+        save_nii_volume(path, output_volume, affine)
+
     @property
     def xyz_masked(self) -> torch.Tensor:
         return transform_points(self.transformation, self.xyz_masked_untransformed)
@@ -193,7 +204,6 @@ class Stack(object):
     ) -> None:
         self.slices = slices
         if mask is None:
-            # mask = slices > 0.0
             mask = torch.ones_like(slices, dtype=torch.bool)
         self.mask = mask
         if transformation is None:
@@ -334,9 +344,16 @@ def load_nii_volume(path: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     return volume, resolutions, affine
 
 
-def save_slices(folder: str, images: List[Slice]) -> None:
+MASK_PREFIX = "mask_"
+
+
+def save_slices(folder: str, images: List[Slice], sep: bool = False) -> None:
     for i, image in enumerate(images):
-        image.save(os.path.join(folder, f"{i}.nii.gz"), True)
+        if sep:
+            image.save(os.path.join(folder, f"{i}.nii.gz"), masked=False)
+            image.save_mask(os.path.join(folder, f"{MASK_PREFIX}{i}.nii.gz"))
+        else:
+            image.save(os.path.join(folder, f"{i}.nii.gz"), masked=True)
 
 
 def load_slices(folder: str, device=torch.device("cpu")) -> List[Slice]:
@@ -345,10 +362,17 @@ def load_slices(folder: str, device=torch.device("cpu")) -> List[Slice]:
     for f in os.listdir(folder):
         if not (f.endswith("nii") or f.endswith("nii.gz")):
             continue
+        if f.startswith(MASK_PREFIX):
+            continue
         ids.append(int(f.split(".nii")[0]))
         slice, resolutions, affine = load_nii_volume(os.path.join(folder, f))
         slice_tensor = torch.tensor(slice, device=device)
-        mask_tensor = slice_tensor > 0
+        if os.path.exists(os.path.join(folder, MASK_PREFIX + f)):
+            mask, _, _ = load_nii_volume(os.path.join(folder, MASK_PREFIX + f))
+            mask_tensor = torch.tensor(mask, device=device, dtype=torch.bool)
+        else:
+            mask_tensor = torch.ones_like(slice_tensor, dtype=torch.bool)
+        # slice_tensor > 0
         slice_tensor, mask_tensor, transformation = affine2transformation(
             slice_tensor, mask_tensor, resolutions, affine
         )
@@ -370,7 +394,7 @@ def load_stack(
 ) -> Stack:
     slices, resolutions, affine = load_nii_volume(path_vol)
     if path_mask is None:
-        mask = slices > 0
+        mask = np.ones_like(slices, dtype=bool)
     else:
         mask, resolutions_m, affine_m = load_nii_volume(path_mask)
         mask = mask > 0
@@ -404,7 +428,8 @@ def load_volume(
 ) -> Volume:
     vol, resolutions, affine = load_nii_volume(path_vol)
     if path_mask is None:
-        mask = vol > 0
+        # mask = vol > 0
+        mask = np.ones_like(vol, dtype=bool)
     else:
         mask, resolutions_m, affine_m = load_nii_volume(path_mask)
         mask = mask > 0
@@ -432,3 +457,7 @@ def load_volume(
         resolution_y=resolutions[1],
         resolution_z=resolutions[2],
     )
+
+
+def load_mask(path_mask, device=torch.device("cpu")) -> Volume:
+    return load_volume(path_mask, path_mask, device)

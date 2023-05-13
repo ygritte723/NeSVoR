@@ -5,7 +5,7 @@ import shutil
 import glob
 import logging
 import numpy as np
-from ..image import load_volume
+from ..image import load_mask
 from ..utils import makedirs, LogIO
 from .. import (
     TWAI_DIR,
@@ -83,7 +83,7 @@ def guess_ga(mask_path: str, condition: str, device) -> int:
         datasets = [ATLAS_SB]
     else:
         datasets = [ATLAS_CONTROL_HARVARD, ATLAS_CONTROL_CHINESE, ATLAS_SB]
-    mask = load_volume(mask_path, device=device)
+    mask = load_mask(mask_path, device=device)
     v_mask = (
         (mask.image > 0).float().sum()
         * mask.resolution_x
@@ -94,7 +94,7 @@ def guess_ga(mask_path: str, condition: str, device) -> int:
     target_atlas = None
     for dataset in datasets:
         for f in glob.glob(os.path.join(dataset, "**", "mask.nii.gz")):
-            atlas = load_volume(f, device=device)
+            atlas = load_mask(f, device=device)
             v_atlas = (
                 (atlas.image > 0).float().sum()
                 * atlas.resolution_x

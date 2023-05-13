@@ -4,7 +4,6 @@ import logging
 import re
 import os
 import torch
-import numpy as np
 from typing import List, Optional, Tuple, Dict, Any
 from ..image import Stack, Slice
 from ..svort.inference import svort_predict

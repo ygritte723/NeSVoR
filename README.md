@@ -92,7 +92,7 @@ docker pull junshenxu/nesvor
 ```
 Note: our latest image was built with CUDA 11.7.
 
-#### Run NeSVoR
+#### Run NeSVoR with Docker
 
 You may run a container in an iterative way.
 

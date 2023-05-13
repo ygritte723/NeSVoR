@@ -197,7 +197,7 @@ def segment(
     net = build_monaifbs_net(device)
     for i, stack in enumerate(stacks):
         logging.info(f"segmenting stack {i}")
-        stack.mask = _segment(
+        seg_mask = _segment(
             stack.slices,
             stack.resolution_x,
             stack.resolution_y,
@@ -207,6 +207,7 @@ def segment(
             radius,
             threshold_small,
         )
+        stack.mask = torch.logical_and(stack.mask, seg_mask)
         if not stack.mask.any():
             logging.warning(
                 "One of the input stack is all zero after brain segmentation. Please check your data!"
