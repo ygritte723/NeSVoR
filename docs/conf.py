@@ -18,7 +18,8 @@ with open("../nesvor/version.py") as fp:
 project = "NeSVoR"
 copyright = info_dict["__copyright__"]
 author = info_dict["__author__"]
-release = info_dict["__version__"]
+version = info_dict["__version__"]
+release = version
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -34,6 +35,7 @@ extensions = [
 templates_path = ["_templates"]
 source_suffix = ".rst"
 master_doc = "index"
+pygments_style = "sphinx"
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 
