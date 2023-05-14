@@ -1,10 +1,10 @@
-Fancytool command
+nesvor
 ***********************
 
 .. argparse::
    :module: nesvor.cli.parsers
    :func: get_parser_only
-   :prog: fancytool
+   :prog: nesvor
 
    subcommand
         Here we add a reference to subcommand, to simplify navigation.

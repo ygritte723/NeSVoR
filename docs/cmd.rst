@@ -1,8 +1,15 @@
-Command line utilities
+Commands
 **********************
 
 .. toctree::
    :maxdepth: 1
 
-   cmd_main
-   cmd_subcommand
+   nesvor
+   reconstruct
+   sample-volume
+   sample-slices
+   register
+   segment-stack
+   correct-bias-field
+   assess
+   segment-volume
