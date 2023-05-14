@@ -8,7 +8,6 @@ Welcome to NeSVoR's documentation!
 
 .. toctree::
    :maxdepth: 2
-   .. :caption: Contents:
 
    introduction
    installation
@@ -16,12 +15,3 @@ Welcome to NeSVoR's documentation!
    cmd
    examples
    citation
-
-
-..
-   Indices and tables
-   ==================
-
-   * :ref:`genindex`
-   * :ref:`modindex`
-   * :ref:`search`
