@@ -959,3 +959,7 @@ def main_parser() -> Tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
     build_command_assess(subparsers)
     build_command_segment_volume(subparsers)
     return parser, subparsers
+
+
+def get_parser_only():
+    return main_parser()[0]
