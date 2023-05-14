@@ -6,3 +6,4 @@ segment-stack
    :func: get_parser_for_sphinx
    :prog: nesvor
    :path: segment-stack
+   :nodefault:

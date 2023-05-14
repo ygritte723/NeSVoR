@@ -6,3 +6,4 @@ sample-volume
    :func: get_parser_for_sphinx
    :prog: nesvor
    :path: sample-volume
+   :nodefault:

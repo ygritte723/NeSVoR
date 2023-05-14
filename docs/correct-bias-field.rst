@@ -6,3 +6,4 @@ correct-bias-field
    :func: get_parser_for_sphinx
    :prog: nesvor
    :path: correct-bias-field
+   :nodefault:

@@ -17,6 +17,11 @@ class Formatter(
             action.help = str(action.help)
         return super()._format_action(action)
 
+    def _format_text(self, text: str) -> str:
+        if text:
+            text = str(text)
+        return super()._format_text(text)
+
 
 class CommandHelpFormatter(Formatter, argparse.MetavarTypeHelpFormatter):
     pass

@@ -6,3 +6,4 @@ sample-slices
    :func: get_parser_for_sphinx
    :prog: nesvor
    :path: sample-slices
+   :nodefault:

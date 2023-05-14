@@ -74,3 +74,10 @@ def rst2txt(source: str) -> str:
     translator = sphinx.writers.text.TextTranslator(document, builder)
     document.walkabout(translator)
     return str(translator.body)
+
+
+def show_link(text: str, link: str) -> str:
+    if NOT_DOC:
+        return link
+    else:
+        return f"`{text} <{link}>`_"

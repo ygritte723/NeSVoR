@@ -2,7 +2,7 @@ import argparse
 from typing import Union, Sequence, Optional, Tuple
 from .formatters import CommandHelpFormatter, MainHelpFormatter
 from .. import __version__, __url__
-from .docs import rst, not_doc, doc_mode
+from .docs import rst, not_doc, doc_mode, show_link
 
 
 # parents parsers
@@ -148,11 +148,12 @@ def build_parser_training() -> argparse.ArgumentParser:
         default="edge",
         type=str,
         choices=["TV", "edge", "L2", "none"],
-        help=(
-            "Type of image regularization. `TV`: total variation (L1 regularization of image gradient); "
-            "`edge`: edge-preserving regularization; "
-            "`L2`: L2 regularization of image gradient; "
-            "`none`: not image regularization."
+        help=rst(
+            "Type of image regularization. \n\n"
+            "``TV``: total variation (L1 regularization of image gradient); \n"
+            "``edge``: edge-preserving regularization; \n"
+            "``L2``: L2 regularization of image gradient; \n"
+            "``none``: not image regularization. \n"
         ),
     )
     parser.add_argument(
@@ -167,13 +168,16 @@ def build_parser_training() -> argparse.ArgumentParser:
         default=0.2,
         help=(
             "Parameter to define intensity of an edge in edge-preserving regularization."
-            "The edge-preserving regularization becomes L1 when delta -> 0."
+            "The edge-preserving regularization becomes L1 when delta goes to 0."
         ),
     )
     parser.add_argument(
         "--img-reg-autodiff",
         action="store_true",
-        help="Use auto diff to compute the image graident in the image regularization. By default, a finite difference is used.",
+        help=(
+            "Use auto diff to compute the image graident in the image regularization. "
+            "By default, the finite difference is used."
+        ),
     )
     # deformation regularization
     parser.add_argument(
@@ -496,7 +500,7 @@ def build_parser_svort() -> argparse.ArgumentParser:
         default="v2",
         type=str,
         choices=["v1", "v2"],
-        help="version of SVoRT",
+        help="Version of SVoRT model",
     )
     parser.add_argument(
         "--scanner-space",
@@ -916,16 +920,16 @@ def build_command_segment_volume(
         name="segment-volume",
         help="3D fetal brain segmentation",
         description=(
-            "TWAI brain segmentation of reconstructed 3D volume. Segmentation labels: "
-            "1: white matter (excluding corpus callosum); "
-            "2: intra-axial cerebrospinal fluid (CSF); "
-            "3: cerebellum; "
-            "4: extra-axial CSF; "
-            "5: cortical gray matter; "
-            "6: deep gray matter; "
-            "7: brainstem; "
-            "8: corpus callosum. "
-            "Check out https://github.com/LucasFidon/trustworthy-ai-fetal-brain-segmentation for details."
+            "TWAI brain segmentation of reconstructed 3D volume. Segmentation labels: \n\n"
+            "1. white matter (excluding corpus callosum); \n"
+            "2. intra-axial cerebrospinal fluid (CSF); \n"
+            "3. cerebellum; \n"
+            "4. extra-axial CSF; \n"
+            "5. cortical gray matter; \n"
+            "6. deep gray matter; \n"
+            "7. brainstem; \n"
+            "8. corpus callosum. \n\n"
+            f"Check out {show_link('the original repo',  'https://github.com/LucasFidon/trustworthy-ai-fetal-brain-segmentation')} for details.\n"
         ),
         parents=[
             build_parser_inputs(input_volume="required"),
@@ -978,4 +982,39 @@ def get_parser_for_sphinx():
     for action in parser._action_groups[2]._group_actions[0]._get_subactions():
         epilog += f"\n  :doc:`{action.dest}`\n    {action.help}\n"
     parser.epilog = epilog
+
+    for action_group in parser._action_groups:
+        for action in action_group._group_actions:
+            if isinstance(action, argparse._SubParsersAction):
+                subparsersaction = action
+                break
+
+    for name, subaction in subparsersaction._name_parser_map.items():
+        for action_group in subaction._action_groups:
+            for action in action_group._group_actions:
+                if isinstance(action, argparse._HelpAction):
+                    continue
+                help = ""
+                if action.choices is not None:
+                    choices = [f"``{c}``" for c in action.choices]
+                    help += f"**Possible choices**: {', '.join(choices)}\n\n"
+                    action.choices = None
+                elif action.type is not None:
+                    t = action.type.__name__
+                    if action.nargs == "+":
+                        t = f"{t} [{t} ...]"
+                    elif action.nargs in [None, 0, 1]:
+                        pass
+                    else:
+                        raise NotImplementedError(t, action.nargs)
+                    help += f"**Type**: `{t}`\n\n"
+                    # action.nargs
+                if action.default is not None and not isinstance(
+                    action, argparse._StoreConstAction
+                ):
+                    help += f"**Default**: ``{action.default}``\n\n"
+                if action.help is None:
+                    action.help = help
+                else:
+                    action.help = help + action.help
     return parser
