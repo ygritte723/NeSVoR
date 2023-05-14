@@ -2,12 +2,8 @@
 
 
 import sys
-import torch
 import string
-from . import commands
 from .parsers import main_parser
-from ..utils import setup_logger, set_seed
-from .. import __version__
 
 
 def main() -> None:
@@ -20,13 +16,23 @@ def main() -> None:
         if sys.argv[-1] in subparsers.choices:
             subparsers.choices[sys.argv[-1]].print_help(sys.stdout)
             return
-    # parse args and setup
+    # parse args
     args = parser.parse_args()
+
+    run(args)
+
+
+def run(args) -> None:
+    import torch
+    from . import commands
+    from .. import utils
+
+    # setup
     args.device = torch.device(args.device)
-    set_seed(args.seed)
+    utils.set_seed(args.seed)
     if args.debug:
         args.verbose = 2
-    setup_logger(args.output_log, args.verbose)
+    utils.setup_logger(args.output_log, args.verbose)
     # execute command
     command_class = "".join(string.capwords(w) for w in args.command.split("-"))
     getattr(commands, command_class)(args).main()

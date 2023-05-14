@@ -6,4 +6,6 @@ SimpleITK>=2.2.1
 monai==0.3.0
 scikit-image>=0.20.0
 tensorflow
+sphinx
+docutils
 #git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch

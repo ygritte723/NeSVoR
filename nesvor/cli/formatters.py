@@ -2,6 +2,7 @@
 
 
 import argparse
+from argparse import Action
 
 
 class Formatter(
@@ -10,6 +11,11 @@ class Formatter(
 ):
     def __init__(self, prog: str) -> None:
         super().__init__(prog, max_help_position=50, width=None)
+
+    def _format_action(self, action: Action) -> str:
+        if action.help:
+            action.help = str(action.help)
+        return super()._format_action(action)
 
 
 class CommandHelpFormatter(Formatter, argparse.MetavarTypeHelpFormatter):
