@@ -19,7 +19,7 @@ class CommandHelpFormatter(Formatter, argparse.MetavarTypeHelpFormatter):
 class MainHelpFormatter(Formatter):
     def _format_action(self, action):
         parts = super()._format_action(action)
-        L = self._max_help_position - 2
+        L = self._max_help_position - 20
         if action.nargs == 0:
             parts_list = parts.split()
             i = 0

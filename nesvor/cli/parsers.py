@@ -1,7 +1,10 @@
 import argparse
 from typing import Union, Sequence, Optional, Tuple
 from .formatters import CommandHelpFormatter, MainHelpFormatter
-from .. import __version__
+from .. import __version__, __url__
+
+
+NOT_DOC = True
 
 
 # parents parsers
@@ -746,11 +749,11 @@ def build_command_reconstruct(
         description=(
             "Use the NeSVoR algorithm to reconstuct a high-quality and coherent 3D volume from multiple stacks of 2D slices. "
             "This command can be applied to both rigid (e.g., brain) and non-rigid (e.g. uterus) motion. "
-            "It also includes several optional preprocessing stpes: "
-            "1: ROI masking / segmentation from each input stack with a CNN (only for fetal brain); "
-            "2: N4 bias filed correction for each stack; "
-            "3: Assess quality and motion of each stack, which can be used to rank and filter the data; "
-            "4: Motion correction with SVoRT (only for fetal brain) or stack-to-stack registration. "
+            "It also includes several optional preprocessing stpes: \n\n"
+            "1. ROI masking/segmentation from each input stack with a CNN (only for fetal brain); \n"
+            "2. N4 bias filed correction for each stack; \n"
+            "3. Quality and motion assessment of each stack, which can be used to rank and filter the data; \n"
+            "4. Motion correction with SVoRT (only for fetal brain) or stack-to-stack registration. \n"
         ),
         parents=[
             build_parser_inputs(input_stacks=True, input_slices=True),
@@ -824,7 +827,7 @@ def build_command_register(
     parser_register = add_subcommand(
         subparsers,
         name="register",
-        help="slice-to-volume registration",
+        help="(rigid) motion correction with SVoRT or stack-to-stack registration",
         description="Perform inital (rigid) motion correction using SVoRT (only for fetal brain) or stack-to-stack registration.",
         parents=[
             build_parser_inputs(input_stacks="required"),
@@ -844,7 +847,7 @@ def build_command_segment_stack(
     parser_segment_stack = add_subcommand(
         subparsers,
         name="segment-stack",
-        help="2D fetal brain segmentation/masking",
+        help="2D fetal brain masking of input stacks",
         description=(
             "Segment the fetal brain ROI from each stack using a CNN model (MONAIfbs). "
             "See https://github.com/gift-surg/MONAIfbs for details. "
@@ -867,7 +870,7 @@ def build_command_correct_bias_field(
     parser_correct_bias_field = add_subcommand(
         subparsers,
         name="correct-bias-field",
-        help="bias field correction",
+        help="bias field correction using the N4 algorithm",
         description="Perform bias field correction for each input stack with the N4 algorithm.",
         parents=[
             build_parser_inputs(input_stacks="required", no_thickness=True),
@@ -939,10 +942,15 @@ def main_parser(
     # main parser
     parser = argparse.ArgumentParser(
         prog="nesvor",
-        description=f"NeSVoR: a toolkit for neural slice-to-volume reconstruction",
+        description="NeSVoR: a toolkit for neural slice-to-volume reconstruction"
+        if NOT_DOC
+        else (
+            "``nesvor`` has a range of subcommands to perform preprocessing, slice-to-volume reconstruction, and analysis."
+            " See the corresponding pages for details. "
+        ),
         epilog="Run 'nesvor COMMAND --help' for more information on a command.\n\n"
         + "To learn more about NeSVoR, check out our repo at "
-        + "https://github.com/daviddmc/NeSVoR",
+        + __url__,
         formatter_class=MainHelpFormatter,
     )
     parser.add_argument(
@@ -961,6 +969,15 @@ def main_parser(
     return parser, subparsers
 
 
-def get_parser_only():
+def get_parser_for_sphinx():
     """This function is used for docs."""
-    return main_parser(title="Subcommands", metavar="command", dest="command")[0]
+    global NOT_DOC
+    NOT_DOC = False
+    parser, subparser = main_parser(
+        title="Subcommands", metavar="command", dest="command"
+    )
+    epilog = ""
+    for action in parser._action_groups[2]._group_actions[0]._get_subactions():
+        epilog += f"\n  :doc:`{action.dest}`\n    {action.help}\n"
+    parser.epilog = epilog
+    return parser
