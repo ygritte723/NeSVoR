@@ -1,5 +1,5 @@
 segment-stack
-***********************
+=============
 
 .. argparse::
    :module: nesvor.cli.parsers

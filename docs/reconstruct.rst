@@ -1,5 +1,5 @@
 reconstruct
-***********************
+===========
 
 .. argparse::
    :module: nesvor.cli.parsers

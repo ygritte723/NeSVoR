@@ -1,5 +1,5 @@
 sample-slices
-***********************
+=============
 
 .. argparse::
    :module: nesvor.cli.parsers

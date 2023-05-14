@@ -10,7 +10,9 @@ Welcome to NeSVoR's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   installation
    cmd
+   citation
 
 Indices and tables
 ==================

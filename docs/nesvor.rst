@@ -1,11 +1,26 @@
 nesvor
-***********************
+======
 
 .. argparse::
    :module: nesvor.cli.parsers
    :func: get_parser_only
    :prog: nesvor
+   :nosubcommands:
+   :noepilog:
 
-   subcommand
-        Here we add a reference to subcommand, to simplify navigation.
-        See :doc:`cmd_subcommand`
+   command
+      :doc:`reconstruct`
+
+      :doc:`sample-volume`
+
+      :doc:`sample-slices`
+
+      :doc:`register`
+
+      :doc:`segment-stack`
+
+      :doc:`correct-bias-field`
+
+      :doc:`assess`
+
+      :doc:`segment-volume`

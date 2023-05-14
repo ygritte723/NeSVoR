@@ -1,5 +1,5 @@
-sample-volume
-***********************
+segment-volume
+==============
 
 .. argparse::
    :module: nesvor.cli.parsers

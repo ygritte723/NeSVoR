@@ -933,11 +933,13 @@ def build_command_segment_volume(
     return parser_segment_volume
 
 
-def main_parser() -> Tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
+def main_parser(
+    title="commands", metavar="COMMAND", dest="command"
+) -> Tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
     # main parser
     parser = argparse.ArgumentParser(
         prog="nesvor",
-        description=f"NeSVoR: a toolkit for neural slice-to-volume reconstruction (v{__version__})",
+        description=f"NeSVoR: a toolkit for neural slice-to-volume reconstruction",
         epilog="Run 'nesvor COMMAND --help' for more information on a command.\n\n"
         + "To learn more about NeSVoR, check out our repo at "
         + "https://github.com/daviddmc/NeSVoR",
@@ -947,9 +949,7 @@ def main_parser() -> Tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
         "-v", "--version", action="version", version="%(prog)s v" + __version__
     )
     # commands
-    subparsers = parser.add_subparsers(
-        title="commands", metavar="COMMAND", dest="command"
-    )
+    subparsers = parser.add_subparsers(title=title, metavar=metavar, dest=dest)
     build_command_reconstruct(subparsers)
     build_command_sample_volume(subparsers)
     build_command_sample_slices(subparsers)
@@ -962,4 +962,5 @@ def main_parser() -> Tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
 
 
 def get_parser_only():
-    return main_parser()[0]
+    """This function is used for docs."""
+    return main_parser(title="Subcommands", metavar="command", dest="command")[0]

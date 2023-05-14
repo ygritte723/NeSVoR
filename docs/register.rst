@@ -1,5 +1,5 @@
 register
-***********************
+========
 
 .. argparse::
    :module: nesvor.cli.parsers
