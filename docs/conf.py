@@ -59,8 +59,8 @@ from pygments import token
 from sphinx.highlighting import lexers
 
 
-class BCLLexer(RegexLexer):
-    name = "MYLANG"
+class UsageLexer(RegexLexer):
+    name = "nesvorusage"
 
     my_types = ["int", "float", "str"]
 
@@ -75,10 +75,26 @@ class BCLLexer(RegexLexer):
     }
 
 
-lexers["MYLANG"] = BCLLexer(startinline=True)
+class CommandLexer(RegexLexer):
+    name = "nesvorcommand"
+
+    tokens = {
+        "root": [
+            (r"nesvor [^\s\[]*", token.Keyword),
+            (r"-[^\s]+", token.Name),
+            (r"\s\.{3}", token.Text),
+            (r"[0-9.]+", token.Literal.Number),
+            (r"[^\s\\]+", token.Literal.String),
+            (r".", token.Text),
+        ]
+    }
+
+
+lexers["nesvorusage"] = UsageLexer(startinline=True)
+lexers["nesvorcommand"] = CommandLexer(startinline=True)
 
 pygments_style = "sphinx"
-highlight_language = "MYLANG"
+highlight_language = "nesvorusage"
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
@@ -94,3 +110,7 @@ html_js_files = [
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = "nesvordoc"
+
+# do not convert -- to long -
+html_use_smartypants = False
+smartquotes = False

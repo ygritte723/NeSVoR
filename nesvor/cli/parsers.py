@@ -151,7 +151,7 @@ def build_parser_training() -> argparse.ArgumentParser:
         help=rst(
             "Type of image regularization. \n\n"
             "1. ``TV``: total variation (L1 regularization of image gradient); \n"
-            "2. ``edge``: edge-preserving regularization; \n"
+            "2. ``edge``: edge-preserving regularization, see `--delta <#delta>`__\ . \n"
             "3. ``L2``: L2 regularization of image gradient; \n"
             "4. ``none``: no image regularization. \n\n"
         ),
@@ -166,9 +166,10 @@ def build_parser_training() -> argparse.ArgumentParser:
         "--delta",
         type=float,
         default=0.2,
-        help=(
-            "Parameter to define intensity of an edge in edge-preserving regularization."
-            "The edge-preserving regularization becomes L1 when delta goes to 0."
+        help=rst(
+            "Parameter to define intensity of an edge in edge-preserving regularization. "
+            "See `--image-regularization <#image-regularization>`__\ ."
+            "The edge-preserving regularization becomes L1 when ``delta`` goes to 0."
         ),
     )
     parser.add_argument(
@@ -214,7 +215,9 @@ def build_parser_training() -> argparse.ArgumentParser:
     parser.add_argument(
         "--n-epochs",
         type=int,
-        help="Number of epochs for training. If provided, will ignore --n-iter",
+        help=rst(
+            "Number of epochs for training. If provided, will ignore `--n-iter <#n-iter>`__"
+        ),
     )
     parser.add_argument(
         "--batch-size", default=1024 * 4, type=int, help="Batch size for training."
@@ -323,9 +326,9 @@ def build_parser_stack_masking(stack_masks=True) -> argparse.ArgumentParser:
     parser.add_argument(
         "--stacks-intersection",
         action="store_true",
-        help=(
+        help=rst(
             "Only consider the region defined by the intersection of input stacks. "
-            "Will be ignored if --volume-mask is provided."
+            "Will be ignored if `--volume-mask <#volume-mask>`__ is provided."
         ),
     )
     parser.add_argument(
@@ -656,14 +659,14 @@ def build_parser_assessment(**kwargs) -> argparse.ArgumentParser:
             "3. ``threshold``: remove a stack if the metric is worse than ``C``; \n"
             "4. ``percentatge``: remove the bottom (``num_stack * C``) stacks; \n"
             "5. ``none``: no filtering. \n\n"
-            "The value of ``C`` is specified by `--cutoff <#cutoff>`_. \n"
+            "The value of ``C`` is specified by `--cutoff <#cutoff>`__. \n"
         ),
     )
     parser.add_argument(
         "--cutoff",
         type=float,
         help=rst(
-            "The cutoff value for filtering, i.e., the value ``C`` in `--filter-method <#filter-method>`_"
+            "The cutoff value for filtering, i.e., the value ``C`` in `--filter-method <#filter-method>`__"
         ),
     )
     update_defaults(_parser, **kwargs)
@@ -707,7 +710,7 @@ def build_parser_common() -> argparse.ArgumentParser:
         type=int,
         default=1,
         choices=[0, 1, 2],
-        help="level of verbosity: (0: warning/error, 1: info, 2: debug)",
+        help="Level of verbosity: (0: warning/error, 1: info, 2: debug)",
     )
     parser.add_argument("--output-log", type=str, help="Path to the output log file")
     parser.add_argument("--seed", type=int, default=None, help="Random seed")
@@ -789,7 +792,7 @@ def build_command_sample_volume(
         subparsers,
         name="sample-volume",
         help="sample a volume from a trained NeSVoR model",
-        description="sample a volume from a trained NeSVoR model",
+        description="Sample a volume from a trained NeSVoR model. ",
         parents=[
             build_parser_inputs(input_model="required"),
             build_parser_outputs(
@@ -814,7 +817,7 @@ def build_command_sample_slices(
         subparsers,
         name="sample-slices",
         help="sample slices from a trained NeSVoR model",
-        description="sample slices from a trained NeSVoR model",
+        description="Sample slices from a trained NeSVoR model. ",
         parents=[
             build_parser_inputs(input_slices="required", input_model="required"),
             build_parser_outputs(simulate_slices="required"),
@@ -854,8 +857,8 @@ def build_command_segment_stack(
         name="segment-stack",
         help="2D fetal brain masking of input stacks",
         description=(
-            "Segment the fetal brain ROI from each stack using a CNN model (MONAIfbs). "
-            "See https://github.com/gift-surg/MONAIfbs for details. "
+            "Segment the fetal brain ROI from each stack using a CNN model (MONAIfbs). \n"
+            f"Check out {show_link('the original repo',  'https://github.com/gift-surg/MONAIfbs')} for details.\n"
         ),
         parents=[
             build_parser_inputs(input_stacks="required", no_thickness=True),
