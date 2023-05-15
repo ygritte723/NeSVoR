@@ -2,7 +2,7 @@ import argparse
 from typing import Union, Sequence, Optional, Tuple
 from .formatters import CommandHelpFormatter, MainHelpFormatter
 from .. import __version__, __url__
-from .docs import rst, not_doc, doc_mode, show_link
+from .docs import rst, not_doc, doc_mode, show_link, prepare_parser_for_sphinx
 
 
 # parents parsers
@@ -974,47 +974,9 @@ def main_parser(
     return parser, subparsers
 
 
-def get_parser_for_sphinx():
+def get_parser_for_sphinx() -> argparse.ArgumentParser:
     """This function is used for docs."""
     doc_mode()
     parser, _ = main_parser(title="Subcommands", metavar="command", dest="command")
-    epilog = ""
-    for action in parser._action_groups[2]._group_actions[0]._get_subactions():
-        epilog += f"\n  :doc:`{action.dest}`\n    {action.help}\n"
-    parser.epilog = epilog
-
-    for action_group in parser._action_groups:
-        for action in action_group._group_actions:
-            if isinstance(action, argparse._SubParsersAction):
-                subparsersaction = action
-                break
-
-    for name, subaction in subparsersaction._name_parser_map.items():
-        for action_group in subaction._action_groups:
-            for action in action_group._group_actions:
-                if isinstance(action, argparse._HelpAction):
-                    continue
-                help = ""
-                if action.choices is not None:
-                    choices = [f"``{c}``" for c in action.choices]
-                    help += f"**Possible choices**: {', '.join(choices)}\n\n"
-                    action.choices = None
-                elif action.type is not None:
-                    t = action.type.__name__
-                    if action.nargs == "+":
-                        t = f"{t} [{t} ...]"
-                    elif action.nargs in [None, 0, 1]:
-                        pass
-                    else:
-                        raise NotImplementedError(t, action.nargs)
-                    help += f"**Type**: `{t}`\n\n"
-                    # action.nargs
-                if action.default is not None and not isinstance(
-                    action, argparse._StoreConstAction
-                ):
-                    help += f"**Default**: ``{action.default}``\n\n"
-                if action.help is None:
-                    action.help = help
-                else:
-                    action.help = help + action.help
+    parser = prepare_parser_for_sphinx(parser)
     return parser

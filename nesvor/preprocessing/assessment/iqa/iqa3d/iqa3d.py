@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import logging
 import multiprocessing
+import importlib.util
 from .architectures import model_architecture, INPUT_SHAPE
 from .....image import Stack
 from ..... import CHECKPOINT_DIR, IQA3D_URL
@@ -22,6 +23,11 @@ def get_iqa3d_checkpoint() -> str:
 
 
 def iqa3d(stacks: List[Stack], batch_size=8, augmentation=True) -> List[float]:
+    if importlib.util.find_spec("tensorflow") is None:
+        raise ImportError(
+            "Tensorflow was not found! To use 3D IQA, please install tensorflow 2."
+        )
+
     # torch -> numpy
     data: List[np.ndarray] = []
     for stack in stacks:

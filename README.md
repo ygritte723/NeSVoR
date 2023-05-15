@@ -14,12 +14,10 @@ This package is the accumulation of the following works:
 <p align="center"><p align="center">
 
 <!-- toc -->
-<!--
-  - [Slice-to-Volume Registration Transformers (SVoRT)](#slice-to-volume-registration-transformers-svort)
-  - [Neural Slice-to-Volume Reconstruction (NeSVoR)](#neural-slice-to-volume-reconstruction-nesvor) -->
 - [Overview](#overview)
   - [Methods](#methods)
   - [Pipeline](#pipeline)
+- [Documentation](#documentation)
 - [Installation](#installation)
   - [Docker Image](#docker-image)
   - [From Source](#from-source)
@@ -35,7 +33,7 @@ This package is the accumulation of the following works:
     - [Sample Slices](#sample-slices)
   - [Preprocessing](#preprocessing)
     - [Brain Masking](#brain-masking)
-    - [Bias Field Correction](#bias-field-correction) <!-- - [Resources](#resources) -->
+    - [Bias Field Correction](#bias-field-correction)
     - [Stack Quality Assessment](#stack-quality-assessment)
   - [3D Brain Segmentation](#3d-brain-segmentation)
 - [Cite Our Work](#cite-our-work)
@@ -74,6 +72,10 @@ The next figure shows our overall reconstruction pipeline.
    <img src="./docs/_static/images/pipeline.png" align="center" width="900">
 </p>
 <p align="center">Figure 3. The reconstruction pipeline.<p align="center">
+
+## Documentation
+
+The full documentation is available at [Read the Docs](https://nesvor.readthedocs.io/).
 
 ## Installation
 
@@ -115,45 +117,7 @@ docker run --rm --gpus all \
 
 ### From Source
 
-<details>
-  <summary>Show details</summary>
-  
-#### Prerequisites
-
-If you are installing from source, you will need:
-- An NVIDIA GPU
-- Python 3.8 or later;
-- GCC/G++ 7.5 or higher;
-- CUDA v10.2 or higher;
-- CMake v3.21 or higher.
-
-see [tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn) for more on prerequisites
-
-#### Get the NeSVoR Source
-
-Since the master branch might be messy sometimes, it is recommanded to clone a specific release.
-
-```
-git clone https://github.com/daviddmc/NeSVoR --branch v0.3.0
-cd NeSVoR
-```
-
-#### Install Dependencies
-
-```
-pip install -r requirements.txt
-```
-Install PyTorch extension of [tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn). Make sure the installed CUDA version mismatches the version that was used to compile PyTorch. Then, run the following command (see [this](https://github.com/NVlabs/tiny-cuda-nn#pytorch-extension) for more details)
-```
-pip install git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch
-```
-
-#### Install NeSVoR.
-
-```
-pip install -e .
-```
-</details>
+Check out our [documentation](https://nesvor.readthedocs.io/en/latest/installation.html#from-source) if you want to install NeSVoR from source.
 
 ## Quick Start
 
