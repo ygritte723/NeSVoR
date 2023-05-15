@@ -52,15 +52,11 @@ Prerequisites
 
 If you are installing from source, you will need:
 
-.. raw:: html
-
-    <ul>
-        <li>An NVIDIA GPU;</li>
-        <li>Python 3.8 or later;</li>
-        <li>GCC/G++ 7.5 or higher;</li>
-        <li>CUDA v10.2 or higher;</li>
-        <li>CMake v3.21 or higher.</li>
-    </ul>
+#. An NVIDIA GPU;
+#. Python 3.8 or later;
+#. GCC/G++ 7.5 or higher;
+#. CUDA v10.2 or higher;
+#. CMake v3.21 or higher.
 
 See `tiny-cuda-nn <https://github.com/NVlabs/tiny-cuda-nn>`_ for more about prerequisites.
 

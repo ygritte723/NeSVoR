@@ -8,12 +8,10 @@ NeSVoR is a deep learning package for solving slice-to-volume reconstruction pro
 (i.e., reconstructing a 3D isotropic high-resolution volume from a set of motion-corrupted low-resolution slices) 
 with application to fetal/neonatal MRI, which provides
 
-.. raw:: html
+#. Motion correction by mapping 2D slices to a 3D canonical space using `Slice-to-Volume Registration Transformers (SVoRT) <https://link.springer.com/chapter/10.1007/978-3-031-16446-0_1>`_.
+#. Volumetric reconstruction of multiple 2D slices using implicit neural representation `(NeSVoR) <https://ieeexplore.ieee.org/document/10015091>`_.
 
-    <ul>
-        <li><p>Motion correction by mapping 2D slices to a 3D canonical space using<a class="reference external" href="https://link.springer.com/chapter/10.1007/978-3-031-16446-0_1">Slice-to-Volume Registration Transformers (SVoRT)</a></p></li>
-        <li><p>Volumetric reconstruction of multiple 2D slices using implicit neural representation<a class="reference external" href="https://ieeexplore.ieee.org/document/10015091">NeSVoR</a></p></li>
-   </ul>
+.. raw:: html
 
     <p align="center">
         <img src="_static/images/SVoRT_network.png" align="center" width="600">
