@@ -18,8 +18,10 @@ build:
       post_build:
          # This is a small hack to avoid this issue:
          # https://github.com/readthedocs/readthedocs.org/issues/9179
-         - cp -r -v public/* ../../artifacts/${READTHEDOCS_VERSION}/sphinx/
-  
+         - python post_process_html.py docs/_build/html
+         - find ../../artifacts/${READTHEDOCS_VERSION}/sphinx/
+         # - cp -r -v public/* ../../artifacts/${READTHEDOCS_VERSION}/sphinx/
+         
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
