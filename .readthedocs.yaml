@@ -19,7 +19,7 @@ build:
          # This is a small hack to avoid this issue:
          # https://github.com/readthedocs/readthedocs.org/issues/9179
          - find .
-         - python docs/post_process_html.py docs/_build/html
+         - python docs/post_process_html.py _readthedocs/html/
          #- find ../../artifacts/${READTHEDOCS_VERSION}/sphinx/
          # - cp -r -v public/* ../../artifacts/${READTHEDOCS_VERSION}/sphinx/
          
