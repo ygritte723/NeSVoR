@@ -16,7 +16,7 @@ Download NeSVoR image
 
 Pull the latest NeSVoR image from docker hub.
 
-.. code-block:: console
+.. code-block:: bash
 
     docker pull junshenxu/nesvor
 
@@ -27,14 +27,14 @@ Run NeSVoR with docker
 
 You may run a container in an iterative way.
 
-.. code-block:: console
+.. code-block:: bash
 
     docker run -it --gpus all junshenxu/nesvor
     nesvor -h
 
 You may also run the ``nesvor`` command directly as follows.
 
-.. code-block:: console
+.. code-block:: bash
 
     docker run --rm --gpus all \
         -v <path-to-inputs>:/incoming:ro -v <path-to-outputs>:/outgoing:rw \
@@ -69,7 +69,7 @@ Get the NeSVoR source
 
 Since the master branch might be messy sometimes, it is recommanded to clone a specific release.
 
-.. code-block:: console
+.. code-block:: bash
 
     git clone https://github.com/daviddmc/NeSVoR --branch <tag>
     cd NeSVoR
@@ -78,7 +78,7 @@ Since the master branch might be messy sometimes, it is recommanded to clone a s
 Install dependencies
 ^^^^^^^^^^^^^^^^^^^^
 
-.. code-block:: console
+.. code-block:: bash
 
     pip install -r requirements.txt
 
@@ -86,7 +86,7 @@ Install PyTorch extension of `tiny-cuda-nn <https://github.com/NVlabs/tiny-cuda-
 Make sure the installed CUDA version mismatches the version that was used to compile PyTorch. 
 Then, run the following command (see `this <https://github.com/NVlabs/tiny-cuda-nn#pytorch-extension>`_ for more details)
 
-.. code-block:: console
+.. code-block:: bash
 
     pip install git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch
 
@@ -114,6 +114,6 @@ Install NeSVoR
 
 The last step is to install NeSVoR itself.
 
-.. code-block:: console
+.. code-block:: bash
 
     pip install -e .

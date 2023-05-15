@@ -16,7 +16,7 @@ NeSVoR is able to reconstruct a 3D fetal brain from mutiple stacks of 2D images 
 #. Register slices using SVoRT (default).
 #. Reconstruct a 3D volume using NeSVoR.
 
-.. code-block:: console
+.. code-block:: bash
 
     nesvor reconstruct \
         --input-stacks stack-1.nii.gz ... stack-N.nii.gz \
@@ -41,7 +41,7 @@ The following example reconstructs a 3D neonatal brain in the following steps:
 #. Register slices using SVoRT (default).
 #. Reconstruct a 3D volume using NeSVoR.
 
-.. code-block:: console
+.. code-block:: bash
 
     nesvor reconstruct \
         --input-stacks stack-1.nii.gz ... stack-N.nii.gz \
@@ -66,7 +66,7 @@ This is an example for deformable NeSVoR which consists of the following steps:
 #. Perform stack-to-stack registration (``--registration stack``).
 #. Reconstruct a 3D volume using Deformable NeSVoR (`--deformable <reconstruct.html#deformable>`_).
 
-.. code-block:: console
+.. code-block:: bash
 
     nesvor reconstruct \
         --input-stacks stack-1.nii.gz ... stack-N.nii.gz \

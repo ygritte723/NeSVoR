@@ -52,7 +52,33 @@ source_suffix = ".rst"
 master_doc = "index"
 
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
+# pygment highlighting
+from pygments.lexer import RegexLexer
+from pygments import token
+from sphinx.highlighting import lexers
+
+
+class BCLLexer(RegexLexer):
+    name = "MYLANG"
+
+    my_types = ["int", "float", "str"]
+
+    tokens = {
+        "root": [
+            (r" nesvor [^\s\[]*", token.Keyword),
+            (r" command ", token.Keyword),
+            (r"-[^\s]+", token.Name),
+            ("|".join(my_types), token.Keyword.Type),
+            (r".", token.Text),
+        ]
+    }
+
+
+lexers["MYLANG"] = BCLLexer(startinline=True)
+
 pygments_style = "sphinx"
+highlight_language = "MYLANG"
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
