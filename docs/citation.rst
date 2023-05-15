@@ -56,14 +56,10 @@ Other Resources
 
 This project has been greatly inspired by the following list of fantastic works.
 
-.. raw:: html
-
-   <ul>
-      <li><p><a class="reference external" href="https://github.com/gift-surg/NiftyMIC">gift-surg/NiftyMIC</a></p></li>
-      <li><p><a class="reference external" href="https://github.com/bkainz/fetalReconstruction">bkainz/fetalReconstruction</a></p></li>
-      <li><p><a class="reference external" href="https://github.com/SVRTK/SVRTK">SVRTK</a></p></li>
-      <li><p><a class="reference external" href="https://github.com/daviddmc/fetal-IQA">daviddmc/fetal-IQA</a></p></li>
-      <li><p><a class="reference external" href="https://github.com/FNNDSC/pl-fetal-brain-assessment">FNNDSC/pl-fetal-brain-assessment</a></p></li>
-      <li><p><a class="reference external" href="https://github.com/LucasFidon/trustworthy-ai-fetal-brain-segmentation">LucasFidon/trustworthy-ai-fetal-brain-segmentation</a></p></li>
-      <li><p><a class="reference external" href="https://github.com/gift-surg/MONAIfbs">gift-surg/MONAIfbs</a></p></li>
-   </ul>
+* \ `gift-surg/NiftyMIC <https://github.com/gift-surg/NiftyMIC>`_
+* \ `bkainz/fetalReconstruction <https://github.com/bkainz/fetalReconstruction>`_
+* \ `SVRTK <https://github.com/SVRTK/SVRTK>`_
+* \ `daviddmc/fetal-IQA <https://github.com/daviddmc/fetal-IQA>`_
+* \ `FNNDSC/pl-fetal-brain-assessment <https://github.com/FNNDSC/pl-fetal-brain-assessment>`_
+* \ `LucasFidon/trustworthy-ai-fetal-brain-segmentation <https://github.com/LucasFidon/trustworthy-ai-fetal-brain-segmentation>`_
+* \ `gift-surg/MONAIfbs <https://github.com/gift-surg/MONAIfbs>`_
