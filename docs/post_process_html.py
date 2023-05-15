@@ -21,6 +21,17 @@ if os.path.exists(BASE):
                 l = [it for it in l if it]
                 tag.attrs["id"] = "-".join(l)
 
+                a = soup.new_tag(
+                    "a",
+                    attrs={
+                        "class": "headerlink",
+                        "href": "#" + tag.attrs["id"],
+                        "title": "Permalink to this heading",
+                    },
+                )
+                a.string = "¶"
+                tag.parent.string.insert_after(a)
+
             with open(p, "w") as save_file:
                 save_file.write(str(soup))
 
