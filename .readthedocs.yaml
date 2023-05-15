@@ -7,13 +7,19 @@ version: 2
 
 # Set the version of Python and other tools you might need
 build:
-  os: ubuntu-22.04
-  tools:
-    python: "3"
-    # You can also specify other tool versions:
-    # nodejs: "19"
-    # rust: "1.64"
-    # golang: "1.19"
+   os: ubuntu-22.04
+   tools:
+      python: "3"
+      # You can also specify other tool versions:
+      # nodejs: "19"
+      # rust: "1.64"
+      # golang: "1.19"
+   jobs:
+      post_build:
+         # This is a small hack to avoid this issue:
+         # https://github.com/readthedocs/readthedocs.org/issues/9179
+         - cp -r -v public/* ../../artifacts/${READTHEDOCS_VERSION}/sphinx/
+  
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
