@@ -150,10 +150,10 @@ def build_parser_training() -> argparse.ArgumentParser:
         choices=["TV", "edge", "L2", "none"],
         help=rst(
             "Type of image regularization. \n\n"
-            "``TV``: total variation (L1 regularization of image gradient); \n"
-            "``edge``: edge-preserving regularization; \n"
-            "``L2``: L2 regularization of image gradient; \n"
-            "``none``: not image regularization. \n"
+            "1. ``TV``: total variation (L1 regularization of image gradient); \n"
+            "2. ``edge``: edge-preserving regularization; \n"
+            "3. ``L2``: L2 regularization of image gradient; \n"
+            "4. ``none``: no image regularization. \n\n"
         ),
     )
     parser.add_argument(

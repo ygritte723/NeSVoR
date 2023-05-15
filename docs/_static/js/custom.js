@@ -1,4 +1,4 @@
-
+/*
 window.onload = function () {
     var kbds = document.getElementsByTagName("kbd");
     for (let kbd of kbds) {
@@ -7,3 +7,4 @@ window.onload = function () {
         kbd.id = txt;
     }
 }
+*/
