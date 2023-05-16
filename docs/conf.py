@@ -66,9 +66,9 @@ class UsageLexer(RegexLexer):
 
     tokens = {
         "root": [
-            (r" nesvor [^\s\[]*", token.Keyword),
-            (r" command ", token.Keyword),
-            (r"-[^\s]+", token.Name),
+            (r" nesvor [^\s\[]*", token.Name.Function),
+            (r" command ", token.Name.Function),
+            (r"-[^\s]+", token.Name.Variable),
             ("|".join(my_types), token.Keyword.Type),
             (r".", token.Text),
         ]
@@ -80,8 +80,8 @@ class CommandLexer(RegexLexer):
 
     tokens = {
         "root": [
-            (r"nesvor [^\s\[]*", token.Keyword),
-            (r"-[^\s]+", token.Name),
+            (r"nesvor [^\s\[]*", token.Name.Function),
+            (r"-[^\s]+", token.Name.Variable),
             (r"\s\.{3}", token.Text),
             (r"[0-9.]+", token.Literal.Number),
             (r"[^\s\\]+", token.Literal.String),
@@ -93,7 +93,7 @@ class CommandLexer(RegexLexer):
 lexers["nesvorusage"] = UsageLexer(startinline=True)
 lexers["nesvorcommand"] = CommandLexer(startinline=True)
 
-pygments_style = "sphinx"
+pygments_style = "default"  # "colorful"  # "one-dark"  #  # "github-dark"  # "sphinx"
 highlight_language = "nesvorusage"
 
 # -- Options for HTML output -------------------------------------------------

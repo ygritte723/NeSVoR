@@ -44,7 +44,7 @@ You may also run the ``nesvor`` command directly as follows.
         --thicknesses <thick-1> ... <thick-N> \
         --output-volume /outgoing/volume.nii.gz
 
-From Source
+From source
 ------------
 
 Prerequisites
@@ -98,7 +98,7 @@ The 3D MR quality assessment tool uses a pretrained Tensorflow model.
 Tensorflow 2 needs to be installed to enable this tool.
 Check out the `orginal repo <https://github.com/FNNDSC/pl-fetal-brain-assessment>`_ for more details.
 
-TWAI Segmentation
+TWAI segmentation
 +++++++++++++++++
 
 The toolkit provides a wrapper of the TWAI segmentation algorithm for T2w fetal brain MRI. 

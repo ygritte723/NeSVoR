@@ -5,7 +5,7 @@ This toolkit is optimized for slice-to-volume reconstruction in fetal MRI, inclu
 fetal/neonatal brain volume (i.e., a relatively small ROI that can be consider rigid) 
 or fetal body/uterus (i.e., a larger ROI that may undergo deformable motion).
 
-Fetal Brain Reconstruction
+Fetal brain reconstruction
 --------------------------
 
 NeSVoR is able to reconstruct a 3D fetal brain from mutiple stacks of 2D images in the following steps 
@@ -26,7 +26,7 @@ NeSVoR is able to reconstruct a 3D fetal brain from mutiple stacks of 2D images 
         --segmentation \
         --bias-field-correction
 
-Neonatal Brain Reconstruction
+Neonatal brain reconstruction
 -----------------------------
 
 The reconstuction of neonatal brain is similar. 
@@ -51,7 +51,7 @@ The following example reconstructs a 3D neonatal brain in the following steps:
         --otsu-thresholding \
         --bias-field-correction
 
-Fetal Body/Uterus Reconstruction
+Fetal body/uterus reconstruction
 --------------------------------
 
 The NeSVoR toolkit is also capable of reconstructing a larger volumetric ROI that may undergo deformable motion, 
@@ -83,7 +83,7 @@ This is an example for deformable NeSVoR which consists of the following steps:
         --log2-hashmap-size 22 \
         --batch-size 8192
 
-See more
---------
+What's next
+-----------
 
-:doc:`Docs of the commands <cmd>`
+You may find a detailed doc of the commands :doc:`here <cmd>` and more examples :doc:`here <examples>`.

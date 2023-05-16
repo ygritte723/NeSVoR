@@ -4,7 +4,7 @@ How to cite
 .. raw:: html
 
    <p>
-      <span style="position:relative;bottom:0.3em;">If you find this research useful for your work, please give this repo a</span>
+      <span style="position:relative;bottom:0.3em;">If you find this toolkit useful for your work, please give this repo a</span>
       <a class="github-button" href="https://github.com/daviddmc/NeSVoR" data-icon="octicon-star" aria-label="Star daviddmc/NeSVoR on GitHub">Star</a>
       <span style="position:relative;bottom:0.3em;">and cite our work.</span>
    </p>
