@@ -215,7 +215,6 @@ def parse_data(
             (res_s, res_s),
         )
         slices_ori = slices.clone()
-        stacks_ori.append(slices_ori)
         # crop x,y
         s = slices[torch.argmax((slices > 0).sum((1, 2, 3))), 0]
         i1, i2, j1, j2 = 0, s.shape[0] - 1, 0, s.shape[1] - 1
@@ -231,8 +230,9 @@ def parse_data(
             logging.warning("ROI in the data is too large for SVoRT")
         if (i2 - i1) <= 0:
             logging.warning(
-                "One of the input stack is all zero after maksing. Please check your data!"
+                "One of the input stack is all zero after maksing and will be skipped. Please check your data!"
             )
+            continue
         pad_margin = 64
         slices = F.pad(
             slices, (pad_margin, pad_margin, pad_margin, pad_margin), "constant", 0
@@ -249,6 +249,7 @@ def parse_data(
         slices = slices[idx]
         # normalize
         stacks.append(slices / torch.quantile(slices[slices > 0], 0.99))
+        stacks_ori.append(slices_ori)
         # transformation
         transform = data.transformation
         transforms_ori.append(transform)
