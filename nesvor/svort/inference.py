@@ -208,6 +208,7 @@ def parse_data(
     crop_idx = []  # z
 
     for data in dataset:
+        logging.debug("Preprocessing stack %s for registration.", data.name)
         # resample
         slices = resample(
             data.slices * data.mask,
@@ -703,6 +704,7 @@ def svort_predict(
             model = SVoRTv2(n_iter=4)
         else:
             raise ValueError("unknown SVoRT version!")
+        logging.debug("Loading SVoRT model")
         model.to(device)
         model.load_state_dict(cp["model"])
         model.eval()

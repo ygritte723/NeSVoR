@@ -374,6 +374,11 @@ def assess(
         else:
             logging.info(result_log)
 
+    logging.debug(
+        "Input stacks after assessment and filtering: %s",
+        [s.name for s in filtered_stacks],
+    )
+
     return filtered_stacks, results
 
 
