@@ -3,6 +3,11 @@ import os
 import re
 from bs4 import BeautifulSoup
 
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
+info_dict: dict = dict()
+with open("../nesvor/version.py") as fp:
+    exec(fp.read(), info_dict)
 
 print("post processing starts")
 BASE = sys.argv[1]
@@ -32,8 +37,13 @@ if os.path.exists(BASE):
                 a.string = "¶"
                 tag.parent.string.insert_after(a)
 
+            html_string = str(soup)
+            html_string = html_string.replace(
+                "-version-placeholder-", info_dict["__version__"]
+            )
+
             with open(p, "w") as save_file:
-                save_file.write(str(soup))
+                save_file.write(html_string)
 
 
 print("post processing finished")

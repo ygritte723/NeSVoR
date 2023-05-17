@@ -29,7 +29,7 @@ You may run a container in an iterative way.
 
 .. code-block:: bash
 
-    docker run -it --gpus all junshenxu/nesvor
+    docker run -it --gpus all junshenxu/nesvor:v-version-placeholder-
     nesvor -h
 
 You may also run the ``nesvor`` command directly as follows.
@@ -67,7 +67,7 @@ Since the master branch might be messy sometimes, it is recommanded to clone a s
 
 .. code-block:: bash
 
-    git clone https://github.com/daviddmc/NeSVoR --branch <tag>
+    git clone https://github.com/daviddmc/NeSVoR --branch v-version-placeholder-
     cd NeSVoR
 
 
@@ -91,18 +91,37 @@ Other dependencies
 
 Some functionalities of NeSVoR require extra dependencies.
 
+Fetal brain masking (MONAIfbs)
+++++++++++++++++++++++++++++++
+
+To use the MONAIfbs model for fetal brain ROI masking, `MONAI <https://monai.io/>`_ need to be installed.
+Check out the orginal `repo <https://github.com/gift-surg/MONAIfbs>`__ for more details.
+
+.. code-block:: bash
+
+   pip install monai>=0.3.0
+
+N4 bias field correction
+++++++++++++++++++++++++
+
+To use the N4 algorithm for bias field correction, `SimpleITK <https://simpleitk.readthedocs.io/>`_ need to be installed.
+
+.. code-block:: bash
+
+   pip install SimpleITK
+
 3D IQA
 ++++++
 
 The 3D MR quality assessment tool uses a pretrained Tensorflow model.
-Tensorflow 2 needs to be installed to enable this tool.
-Check out the `orginal repo <https://github.com/FNNDSC/pl-fetal-brain-assessment>`_ for more details.
+`Tensorflow <https://www.tensorflow.org/install/pip>`_ needs to be installed to enable this tool.
+Check out the orginal `repo <https://github.com/FNNDSC/pl-fetal-brain-assessment>`__ for more details.
 
 TWAI segmentation
 +++++++++++++++++
 
 The toolkit provides a wrapper of the TWAI segmentation algorithm for T2w fetal brain MRI. 
-You may find more detials of this method in the authors' `repo <https://github.com/LucasFidon/trustworthy-ai-fetal-brain-segmentation>`_. 
+You may find more detials of this method in the authors' `repo <https://github.com/LucasFidon/trustworthy-ai-fetal-brain-segmentation>`__. 
 To use this tool, you need to clone their repo and update the path in ``config.py`` (see the comment in ``config.py`` for details). 
 
 Install NeSVoR
