@@ -38,7 +38,7 @@ You may also run the ``nesvor`` command directly as follows.
 
     docker run --rm --gpus all \
         -v <path-to-inputs>:/incoming:ro -v <path-to-outputs>:/outgoing:rw \
-        junshenxu/nesvor \
+        junshenxu/nesvor:v-version-placeholder- \
         nesvor reconstruct \
         --input-stacks /incoming/stack-1.nii.gz ... /incoming/stack-N.nii.gz \
         --thicknesses <thick-1> ... <thick-N> \
