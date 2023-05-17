@@ -8,7 +8,7 @@ Reconstruct from mutiple stacks of slices
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ``reconstruct`` command can be used to reconstruct a 3D volume from ``N`` stacks of 2D slices (in NIfTI format, i.e. ``.nii`` or ``.nii.gz``). 
-A basic usage of `reconstruct` is as follows, where `mask-i.nii.gz` is the ROI mask of the i-th input stack.
+A basic usage of ``reconstruct`` is as follows, where ``mask-i.nii.gz`` is the ROI mask of the i-th input stack.
 
 .. code-block:: nesvorcommand
 
@@ -38,10 +38,10 @@ A more elaborate example could be
         --n-levels-bias 0 \
         --n-samples 128
 
-Run `nesvor reconstruct --h` to see the meaning of each parameter.
+Run ```nesvor reconstruct --h``` to see the meaning of each parameter.
 
 Given multiple stacks at inputs, 
-`reconstruct` first corrects the motion in the input stacks using SVoRT (the same as what `register` did), 
+``reconstruct`` first corrects the motion in the input stacks using SVoRT (the same as what ``register`` did), 
 and then trains a NeSVoR model that implicitly represent the underlying 3D volume, 
 from which a discretized volume (i.e., a 3D tensor) can be sampled.
 
@@ -57,8 +57,8 @@ Reconstruct from motion-corrected slices
         --output-volume volume.nii.gz
 
 This enables the separation of registration and reconstruction. 
-That is, you may first run `register` to perform motion correction, 
-and then use `reconstruct` to reconstruct a volume from a set of motion-corrected slices.
+That is, you may first run ``register`` to perform motion correction, 
+and then use ``reconstruct`` to reconstruct a volume from a set of motion-corrected slices.
 
 Deformable NeSVoR
 ^^^^^^^^^^^^^^^^^
