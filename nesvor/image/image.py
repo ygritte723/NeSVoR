@@ -201,6 +201,7 @@ class Stack(object):
         resolution_y: float = 1.0,
         thickness: float = 1.0,
         gap: float = 1.0,
+        name: str = "",
     ) -> None:
         self.slices = slices
         if mask is None:
@@ -225,6 +226,7 @@ class Stack(object):
         self.resolution_y = resolution_y
         self.thickness = thickness
         self.gap = gap
+        self.name = name
 
     def __len__(self) -> int:
         return self.slices.shape[0]
@@ -292,6 +294,7 @@ class Stack(object):
             resolution_y=self.resolution_y,
             thickness=self.thickness,
             gap=self.gap,
+            name=self.name,
         )
 
 
@@ -420,6 +423,7 @@ def load_stack(
         resolution_y=resolutions[1],
         thickness=resolutions[2],
         gap=resolutions[2],
+        name=path_vol,
     )
 
 

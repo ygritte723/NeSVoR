@@ -12,8 +12,7 @@ from ..nesvor.sample import sample_volume, sample_slices
 from .io import outputs, inputs
 from ..utils import makedirs, log_args, log_result
 from ..preprocessing.masking import brain_segmentation
-from ..preprocessing import bias_field
-from ..preprocessing.assessment import compute_metric, sort_and_filter
+from ..preprocessing import bias_field, assessment
 from ..segmentation import twai
 
 
@@ -343,50 +342,37 @@ class Assess(Command):
 def assess(
     args: argparse.Namespace, stacks: List[Stack], print_results=False
 ) -> Tuple[List[Stack], List[Dict[str, Any]]]:
-    metric = args.metric
-    if metric == "none":
-        return stacks, []
-
-    scores, descending = compute_metric(stacks, metric, args.device)
-    filtered_stacks, ranks, excludeds = sort_and_filter(
-        stacks, scores, descending, args.filter_method, args.cutoff
+    filtered_stacks, results = assessment.assess(
+        stacks, args.metric, args.device, args.filter_method, args.cutoff
     )
-
-    results = []
-    for i, (score, rank, excluded, name) in enumerate(
-        zip(scores, ranks, excludeds, args.input_stacks)
-    ):
-        name = name.replace(".gz", "").replace(".nii", "")
-        results.append(
-            dict(
-                input_stack=i,
-                name=name,
-                score=score,
-                rank=rank,
-                excluded=excluded,
+    if results:
+        descending = results[0]["descending"]
+        template = "\n%15s %25s %15s %15s %15s"
+        result_log = (
+            "stack assessment results (metric = %s):" % args.metric
+            + template
+            % (
+                "stack",
+                "name",
+                "score " + "(" + ("\u2191" if descending else "\u2193") + ")",
+                "rank",
+                "",
             )
         )
-
-    template = "\n%15s %25s %15s %15s %15s"
-    result_log = "stack assessment results (metric = %s):" % metric + template % (
-        "stack",
-        "name",
-        "score " + "(" + ("\u2191" if descending else "\u2193") + ")",
-        "rank",
-        "",
-    )
-    for i, item in enumerate(results):
-        result_log += template % (
-            item["input_stack"],
-            item["name"] if len(item["name"]) <= 20 else ("..." + item["name"][-17:]),
-            ("%1.4f" if isinstance(item["score"], float) else "%d") % item["score"],
-            item["rank"],
-            "excluded" if item["excluded"] else "",
-        )
-    if print_results:
-        log_result(result_log)
-    else:
-        logging.info(result_log)
+        for item in results:
+            name = item["name"].replace(".gz", "").replace(".nii", "")
+            name = name if len(name) <= 20 else ("..." + name[-17:])
+            result_log += template % (
+                item["input_id"],
+                name,
+                ("%1.4f" if isinstance(item["score"], float) else "%d") % item["score"],
+                item["rank"],
+                "excluded" if item["excluded"] else "",
+            )
+        if print_results:
+            log_result(result_log)
+        else:
+            logging.info(result_log)
 
     return filtered_stacks, results
 

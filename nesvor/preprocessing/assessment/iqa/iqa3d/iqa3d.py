@@ -25,7 +25,7 @@ def get_iqa3d_checkpoint() -> str:
 def iqa3d(stacks: List[Stack], batch_size=8, augmentation=True) -> List[float]:
     if importlib.util.find_spec("tensorflow") is None:
         raise ImportError(
-            "Tensorflow was not found! To use 3D IQA, please install tensorflow 2."
+            "Tensorflow was not found! To use 3D IQA, please install tensorflow."
         )
 
     # torch -> numpy

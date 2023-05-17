@@ -38,7 +38,7 @@ A more elaborate example could be
         --n-levels-bias 0 \
         --n-samples 128
 
-Run ```nesvor reconstruct --h``` to see the meaning of each parameter.
+Run ``nesvor reconstruct --h`` to see the meaning of each parameter.
 
 Given multiple stacks at inputs, 
 ``reconstruct`` first corrects the motion in the input stacks using SVoRT (the same as what ``register`` did), 

@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 import numpy as np
 from ...image import Stack
 from . import motion_estimation
@@ -68,3 +68,32 @@ def sort_and_filter(
     output_stacks = [stacks[i] for i in sorter[:n_keep]]
 
     return output_stacks, ranks, excluded
+
+
+def assess(
+    stacks: List[Stack], metric: str, device, filter_method: str, cutoff: float
+) -> Tuple[List[Stack], List[Dict]]:
+    if metric == "none":
+        return stacks, []
+
+    scores, descending = compute_metric(stacks, metric, device)
+    filtered_stacks, ranks, excludeds = sort_and_filter(
+        stacks, scores, descending, filter_method, cutoff
+    )
+
+    results = []
+    for i, (score, rank, excluded, stack) in enumerate(
+        zip(scores, ranks, excludeds, stacks)
+    ):
+        results.append(
+            dict(
+                input_id=i,
+                name=stack.name,
+                score=score,
+                rank=rank,
+                excluded=excluded,
+                descending=descending,
+            )
+        )
+
+    return filtered_stacks, results

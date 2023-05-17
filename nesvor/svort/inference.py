@@ -227,10 +227,10 @@ def parse_data(
         while j2 and s[:, j2].sum() == 0:
             j2 -= 1
         if ((i2 - i1) > 128 or (j2 - j1) > 128) and svort:
-            logging.warning("ROI in the data is too large for SVoRT")
+            logging.warning(f'ROI in input stack "{data.name}" is too large for SVoRT')
         if (i2 - i1) <= 0:
             logging.warning(
-                "One of the input stack is all zero after maksing and will be skipped. Please check your data!"
+                f'Input stack "{data.name}" is all zero after maksing and will be skipped. Please check your data!'
             )
             continue
         pad_margin = 64
