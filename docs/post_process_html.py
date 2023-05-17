@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 info_dict: dict = dict()
-with open("../nesvor/version.py") as fp:
+with open(os.path.join(os.path.dirname(__file__), "../nesvor/version.py")) as fp:
     exec(fp.read(), info_dict)
 
 print("post processing starts")
