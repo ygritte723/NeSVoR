@@ -267,6 +267,8 @@ def parse_data(
         transforms.append(RigidTransform(transform_ax))
         transforms_full.append(RigidTransform(transform_full_ax))
 
+    assert len(stacks) > 0, "Input data is empty!"
+
     return (
         stacks,
         stacks_ori,
