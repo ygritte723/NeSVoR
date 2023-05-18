@@ -82,7 +82,7 @@ def rst2txt(source: str) -> str:
         document.walkabout(translator)
         return str(translator.body)
     except Exception as e:
-        logging.warn(f"We get")
+        logging.warning("Got the following error during rst conversion: %s", e)
         return source
 
 

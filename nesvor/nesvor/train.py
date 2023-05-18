@@ -177,7 +177,11 @@ def train(slices: List[Slice], args: Namespace) -> Tuple[INR, List[Slice], Volum
     # setup grad scalar for mixed precision training
     fp16 = not args.single_precision
     scaler = torch.cuda.amp.GradScaler(
-        init_scale=1.0, enabled=fp16, growth_factor=2.0, backoff_factor=0.5
+        init_scale=1.0,
+        enabled=fp16,
+        growth_factor=2.0,
+        backoff_factor=0.5,
+        growth_interval=2000,
     )
     # training
     model.train()
@@ -237,6 +241,18 @@ def train(slices: List[Slice], args: Namespace) -> Tuple[INR, List[Slice], Volum
             if i < args.n_iter:
                 decay_milestones.pop(0)
                 scheduler.step()
+            # check scaler
+            if scaler.is_enabled():
+                current_scaler = scaler.get_scale()
+                if current_scaler < 1 / (2**5):
+                    logging.warning(
+                        "Numerical instability detected! "
+                        "The scale of GradScaler is %f, which is too small. "
+                        "The results might be suboptimal. "
+                        "Try to set --single-precision or run the command again with a different random seed."
+                    )
+                if i == args.n_iter:
+                    logging.debug("Final scale of GradScaler = %f" % current_scaler)
 
     # outputs
     transformation = model.transformation
