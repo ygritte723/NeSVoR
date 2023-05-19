@@ -4,6 +4,7 @@ checkpoints/
 /test_*.py
 *.nii
 *.nii.gz
+/docker/NeSVoR/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
