@@ -24,9 +24,13 @@ def get_transform_diff_mean(
 ) -> Tuple[RigidTransform, RigidTransform]:
     transform_diff = transform_out.compose(transform_in.inv())
     transform_diff_ax = transform_diff.axisangle()
-    mid = transform_diff_ax.shape[0] // 2
-    meanT = transform_diff_ax[mid - mean_r : mid + mean_r, 3:].mean(0, keepdim=True)
-    meanR = average_rotation(transform_diff_ax[mid - 3 : mid + 3, :3])
+    length = transform_diff_ax.shape[0]
+    assert length > 0, "input is empty!"
+    mid = length // 2
+    left = max(0, mid - mean_r)
+    right = min(length, mid + mean_r)
+    meanT = transform_diff_ax[left:right, 3:].mean(0, keepdim=True)
+    meanR = average_rotation(transform_diff_ax[left:right, :3])
     transform_diff_mean = torch.cat((meanR, meanT), -1)
     return RigidTransform(transform_diff_mean), transform_diff
 
@@ -48,7 +52,7 @@ def average_rotation(R: torch.Tensor) -> torch.Tensor:
     S_new = S = Rotation.from_quat(barR).as_matrix()
     R = Rmat
     i = 0
-    while np.all(np.isreal(S_new)) and i < 10:
+    while np.all(np.isreal(S_new)) and np.all(np.isfinite(S_new)) and i < 10:
         S = S_new
         i += 1
         sum_vmatrix_normed = np.zeros((3, 3))
@@ -60,7 +64,10 @@ def average_rotation(R: torch.Tensor) -> torch.Tensor:
             sum_inv_norm_vmatrix += 1 / np.linalg.norm(vmatrix, ord=2, axis=(0, 1))
 
         delta = sum_vmatrix_normed / sum_inv_norm_vmatrix
-        S_new = np.matmul(scipy.linalg.expm(delta), S)
+        if np.all(np.isfinite(delta)):
+            S_new = np.matmul(scipy.linalg.expm(delta), S)
+        else:
+            break
 
     S = Rotation.from_matrix(S).as_rotvec()
     return torch.tensor(S[None], dtype=dtype, device=device)
@@ -228,10 +235,11 @@ def parse_data(
         while j2 and s[:, j2].sum() == 0:
             j2 -= 1
         if ((i2 - i1) > 128 or (j2 - j1) > 128) and svort:
-            logging.warning(f'ROI in input stack "{data.name}" is too large for SVoRT')
+            logging.warning('ROI in input stack "%s" is too large for SVoRT', data.name)
         if (i2 - i1) <= 0:
             logging.warning(
-                f'Input stack "{data.name}" is all zero after maksing and will be skipped. Please check your data!'
+                'Input stack "%s" is all zero after maksing and will be skipped. Please check your data!',
+                data.name,
             )
             continue
         pad_margin = 64
@@ -242,9 +250,19 @@ def parse_data(
         j = pad_margin + (j1 + j2) // 2
         slices = slices[:, :, i - 64 : i + 64, j - 64 : j + 64]
         # crop z
-        nnz = (slices > 0).float().sum((1, 2, 3))
-        idx = nnz > 0
+        idx = (slices > 0).float().sum((1, 2, 3)) > 0
         nz = torch.nonzero(idx)
+        nnz = torch.numel(nz)
+        if nnz < 7:
+            logging.warning(
+                'Input stack "%s" only has %d nonzero slices after masking. Consider remove this stack.',
+                data.name,
+                nnz,
+            )
+        else:
+            logging.debug(
+                'Input stack "%s" has %d nonzero slices after masking.', data.name, nnz
+            )
         idx[int(nz[0, 0]) : int(nz[-1, 0] + 1)] = True
         crop_idx.append(idx)
         slices = slices[idx]
