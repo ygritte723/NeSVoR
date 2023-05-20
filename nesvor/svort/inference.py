@@ -481,6 +481,8 @@ def reconstruct_from_stacks(
     }
     if n_stack_recon is None:
         n_stack_recon = len(stacks_pad)
+    else:
+        n_stack_recon = min(len(stacks_pad), n_stack_recon)
     mat = mat_update_resolution(
         RigidTransform.cat([transforms[j] for j in range(n_stack_recon)]).matrix(),
         1,
