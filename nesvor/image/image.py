@@ -11,7 +11,7 @@ from .image_utils import (
     compare_resolution_affine,
     transformation2affine,
 )
-from ..utils import meshgrid
+from ..utils import meshgrid, PathType, DeviceType
 
 
 class Image(object):
@@ -299,7 +299,7 @@ class Stack(object):
 
 
 def save_nii_volume(
-    path: str,
+    path: PathType,
     volume: Union[torch.Tensor, np.ndarray],
     affine: Optional[Union[torch.Tensor, np.ndarray]],
 ) -> None:
@@ -322,11 +322,11 @@ def save_nii_volume(
     img.header.set_xyzt_units(2)
     img.header.set_qform(affine, code="aligned")
     img.header.set_sform(affine, code="scanner")
-    nib.save(img, path)
+    nib.save(img, os.fspath(path))
 
 
-def load_nii_volume(path: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    img = nib.load(path)
+def load_nii_volume(path: PathType) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    img = nib.load(os.fspath(path))
 
     dim = img.header["dim"]
     assert dim[0] == 3 or (dim[0] > 3 and all(d == 1 for d in dim[4:])), (
@@ -350,7 +350,7 @@ def load_nii_volume(path: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 MASK_PREFIX = "mask_"
 
 
-def save_slices(folder: str, images: List[Slice], sep: bool = False) -> None:
+def save_slices(folder: PathType, images: List[Slice], sep: bool = False) -> None:
     for i, image in enumerate(images):
         if sep:
             image.save(os.path.join(folder, f"{i}.nii.gz"), masked=False)
@@ -359,7 +359,9 @@ def save_slices(folder: str, images: List[Slice], sep: bool = False) -> None:
             image.save(os.path.join(folder, f"{i}.nii.gz"), masked=True)
 
 
-def load_slices(folder: str, device=torch.device("cpu")) -> List[Slice]:
+def load_slices(
+    folder: PathType, device: DeviceType = torch.device("cpu")
+) -> List[Slice]:
     slices = []
     ids = []
     for f in os.listdir(folder):
@@ -393,7 +395,9 @@ def load_slices(folder: str, device=torch.device("cpu")) -> List[Slice]:
 
 
 def load_stack(
-    path_vol: str, path_mask: Optional[str] = None, device=torch.device("cpu")
+    path_vol: PathType,
+    path_mask: Optional[PathType] = None,
+    device: DeviceType = torch.device("cpu"),
 ) -> Stack:
     slices, resolutions, affine = load_nii_volume(path_vol)
     if path_mask is None:
@@ -423,12 +427,14 @@ def load_stack(
         resolution_y=resolutions[1],
         thickness=resolutions[2],
         gap=resolutions[2],
-        name=path_vol,
+        name=str(path_vol),
     )
 
 
 def load_volume(
-    path_vol: str, path_mask: Optional[str] = None, device=torch.device("cpu")
+    path_vol: PathType,
+    path_mask: Optional[PathType] = None,
+    device: DeviceType = torch.device("cpu"),
 ) -> Volume:
     vol, resolutions, affine = load_nii_volume(path_vol)
     if path_mask is None:
@@ -463,5 +469,5 @@ def load_volume(
     )
 
 
-def load_mask(path_mask, device=torch.device("cpu")) -> Volume:
+def load_mask(path_mask: PathType, device: DeviceType = torch.device("cpu")) -> Volume:
     return load_volume(path_mask, path_mask, device)

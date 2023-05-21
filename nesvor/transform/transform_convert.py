@@ -1,4 +1,5 @@
 from torch.autograd import Function
+import torch
 
 try:
     import nesvor.transform_convert_cuda as transform_convert_cuda
@@ -49,9 +50,9 @@ class Mat2AxisangleFunction(Function):
         return grad_mat
 
 
-def axisangle2mat(axisangle):
+def axisangle2mat(axisangle: torch.Tensor) -> torch.Tensor:
     return Axisangle2MatFunction.apply(axisangle)
 
 
-def mat2axisangle(mat):
+def mat2axisangle(mat: torch.Tensor) -> torch.Tensor:
     return Mat2AxisangleFunction.apply(mat)

@@ -1,4 +1,4 @@
-from torch import nn
+from typing import Optional, Sequence
 from torch.autograd import Function
 import torch
 
@@ -164,15 +164,15 @@ class SliceAcqAdjointFunction(Function):
 
 
 def slice_acquisition(
-    transforms,
-    vol,
-    vol_mask,
-    slices_mask,
-    psf,
-    slice_shape,
-    res_slice,
-    need_weight,
-    interp_psf,
+    transforms: torch.Tensor,
+    vol: torch.Tensor,
+    vol_mask: Optional[torch.Tensor],
+    slices_mask: Optional[torch.Tensor],
+    psf: torch.Tensor,
+    slice_shape: Sequence,
+    res_slice: float,
+    need_weight: bool,
+    interp_psf: bool,
 ):
     return SliceAcqFunction.apply(
         transforms,
@@ -188,15 +188,15 @@ def slice_acquisition(
 
 
 def slice_acquisition_adjoint(
-    transforms,
-    psf,
-    slices,
-    slices_mask,
-    vol_mask,
-    vol_shape,
-    res_slice,
-    interp_psf,
-    equalize,
+    transforms: torch.Tensor,
+    psf: torch.Tensor,
+    slices: torch.Tensor,
+    slices_mask: Optional[torch.Tensor],
+    vol_mask: Optional[torch.Tensor],
+    vol_shape: Sequence,
+    res_slice: float,
+    interp_psf: bool,
+    equalize: bool,
 ):
     return SliceAcqAdjointFunction.apply(
         transforms,
