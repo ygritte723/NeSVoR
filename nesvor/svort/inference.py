@@ -4,8 +4,8 @@ from typing import List, Tuple, Optional
 import numpy as np
 import torch
 import torch.nn.functional as F
-from .registration import VVR, resample
-from .srr import PSFreconstruction, SRR
+from ..svr.registration import VVR, resample
+from ..svr.reconstruction import psf_reconstruction, SRR_CG
 from . import SVoRT, SVoRTv2
 from ..transform import RigidTransform, mat_update_resolution
 from ..utils import get_PSF, ncc_loss
@@ -490,8 +490,8 @@ def reconstruct_from_stacks(
     )
     ss = torch.cat([stacks_pad[j] for j in range(n_stack_recon)])
     mask_ss = ss > 0
-    volume = PSFreconstruction(mat, ss, None, None, params)
-    srr = SRR(n_iter=1, use_CG=True)
+    volume = psf_reconstruction(mat, ss, None, None, params)
+    srr = SRR_CG(n_iter=1)
     volume = srr(mat, ss, volume, params, slices_mask=mask_ss)
     return volume
 

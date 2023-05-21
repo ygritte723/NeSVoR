@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from ..transform import RigidTransform
-from ..utils import ncc_loss, gaussian_blur, meshgrid
+from ..transform import RigidTransform, axisangle2mat, mat_update_resolution
+from ..utils import ncc_loss, gaussian_blur, meshgrid, get_PSF
+from ..slice_acquisition import slice_acquisition
 import numpy as np
 import types
-from typing import Dict, Any, Tuple, Sequence
+from typing import Dict, Any, Tuple, Sequence, Callable, Union, cast, Optional
 
 
 class Registration(nn.Module):
@@ -16,7 +17,7 @@ class Registration(nn.Module):
         step_size: float,
         max_iter: int,
         optimizer: Dict[str, Any],
-        loss,
+        loss: Union[Dict[str, Any], Callable],
         auto_grad: bool,
     ) -> None:
         super().__init__()
@@ -33,21 +34,24 @@ class Registration(nn.Module):
         # init loss
         if isinstance(loss, dict):
             loss_name = loss.pop("name")
+            params = loss.copy()
             if loss_name == "mse":
                 self.loss = types.MethodType(
-                    lambda s, x, y: F.mse_loss(x, y, reduction="none", **loss), self
+                    lambda s, x, y: F.mse_loss(x, y, reduction="none", **params), self
                 )
             elif loss_name == "ncc":
                 self.loss = types.MethodType(
                     lambda s, x, y: ncc_loss(
-                        x, y, reduction="none", level=s.current_level, **loss
+                        x, y, reduction="none", level=s.current_level, **params
                     ),
                     self,
                 )
             else:
                 raise Exception("unknown loss")
         elif callable(loss):
-            self.loss = types.MethodType(lambda s, x, y: loss(s, x, y), self)
+            self.loss = types.MethodType(
+                lambda s, x, y: cast(Callable, loss)(s, x, y), self
+            )
         else:
             raise Exception("unknown loss")
 
@@ -68,7 +72,13 @@ class Registration(nn.Module):
             if "buf" in self.optimizer:
                 self.optimizer.pop("buf")
 
-    def prepare(self, *args, **kwargs):
+    def prepare(
+        self,
+        theta: torch.Tensor,
+        source: torch.Tensor,
+        target: torch.Tensor,
+        params: Dict[str, Any],
+    ) -> None:
         return
 
     def forward(
@@ -220,6 +230,28 @@ class Registration(nn.Module):
             return grad
 
 
+def resample(
+    x: torch.Tensor, res_xyz_old: Sequence, res_xyz_new: Sequence
+) -> torch.Tensor:
+    ndim = x.ndim - 2
+    assert len(res_xyz_new) == len(res_xyz_old) == ndim
+    grids = []
+    for i in range(ndim):
+        fac = res_xyz_old[i] / res_xyz_new[i]
+        size_new = int(x.shape[-i - 1] * fac)
+        grid_max = (size_new - 1) / fac / (x.shape[-i - 1] - 1)
+        grids.append(
+            torch.linspace(
+                -grid_max, grid_max, size_new, dtype=x.dtype, device=x.device
+            )
+        )
+    grid = torch.stack(torch.meshgrid(*grids[::-1], indexing="ij")[::-1], -1)
+    y = F.grid_sample(
+        x, grid[None].expand((x.shape[0],) + (-1,) * (ndim + 1)), align_corners=True
+    )
+    return y
+
+
 class VVR(Registration):
     def __init__(
         self,
@@ -228,7 +260,7 @@ class VVR(Registration):
         step_size: float,
         max_iter: int,
         optimizer: Dict,
-        loss,
+        loss: Union[Dict[str, Any], Callable],
         auto_grad: bool,
     ) -> None:
         super().__init__(
@@ -303,7 +335,13 @@ class VVR(Registration):
 
         return warpped.view(1, 1, -1), self._target_flat.view(1, 1, -1)
 
-    def prepare(self, theta, source, target, params):
+    def prepare(
+        self,
+        theta: torch.Tensor,
+        source: torch.Tensor,
+        target: torch.Tensor,
+        params: Dict[str, Any],
+    ) -> None:
         res_source = [
             params["gap_source"],
             params["res_y_source"],
@@ -317,6 +355,8 @@ class VVR(Registration):
         self.res = min(res_source + res_target)
         self.relative_res_source = [r / self.res for r in res_source]
         self.relative_res_target = [r / self.res for r in res_target]
+        assert len(source.shape) == 5
+        assert len(target.shape) == 5
 
     def __call__(
         self,
@@ -332,23 +372,75 @@ class VVR(Registration):
         return super().__call__(theta, source, target, params)
 
 
-def resample(
-    x: torch.Tensor, res_xyz_old: Sequence, res_xyz_new: Sequence
-) -> torch.Tensor:
-    ndim = x.ndim - 2
-    assert len(res_xyz_new) == len(res_xyz_old) == ndim
-    grids = []
-    for i in range(ndim):
-        fac = res_xyz_old[i] / res_xyz_new[i]
-        size_new = int(x.shape[-i - 1] * fac)
-        grid_max = (size_new - 1) / fac / (x.shape[-i - 1] - 1)
-        grids.append(
-            torch.linspace(
-                -grid_max, grid_max, size_new, dtype=x.dtype, device=x.device
-            )
+class SVR(Registration):
+    def __init__(
+        self,
+        num_levels: int,
+        num_steps: int,
+        step_size: float,
+        max_iter: int,
+        optimizer: Dict[str, Any],
+        loss: Union[Dict[str, Any], Callable],
+        auto_grad: bool,
+    ) -> None:
+        super().__init__(
+            num_levels, num_steps, step_size, max_iter, optimizer, loss, auto_grad
         )
-    grid = torch.stack(torch.meshgrid(*grids[::-1], indexing="ij")[::-1], -1)
-    y = F.grid_sample(
-        x, grid[None].expand((x.shape[0],) + (-1,) * (ndim + 1)), align_corners=True
-    )
-    return y
+        self.volume_mask: Optional[torch.Tensor] = None
+        self.slices_mask: Optional[torch.Tensor] = None
+        self.slices_mask_resampled: Optional[torch.Tensor] = None
+
+    def update_level(
+        self, theta: torch.Tensor, source: torch.Tensor, target: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        sigma = 0.5 * (2**self.current_level)
+        source = gaussian_blur(source, sigma, truncated=4.0)
+        target = gaussian_blur(target, sigma, truncated=4.0)
+        target = resample(target, [1] * 2, [2**self.current_level] * 2)
+        if self.slices_mask is not None:
+            self.slices_mask_resampled = (
+                resample(
+                    self.slices_mask.float(), [1] * 2, [2**self.current_level] * 2
+                )
+                > 0
+            )
+        return source, target
+
+    def prepare(
+        self,
+        theta: torch.Tensor,
+        source: torch.Tensor,
+        target: torch.Tensor,
+        params: Dict[str, Any],
+    ) -> None:
+        self.psf = get_PSF(0, device=theta.device)
+        self.res_s = params["res_s"]
+        self.res_v = params["res_r"]
+        assert len(source.shape) == 5
+        assert len(target.shape) == 4
+
+    def warp(
+        self, theta: torch.Tensor, source: torch.Tensor, target: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        transforms = axisangle2mat(self.degree2rad(theta))
+        transforms = mat_update_resolution(transforms, 1, self.res_v)
+        volume = source
+        slices = target
+        slices_mask: Optional[torch.Tensor]
+        if self.slices_mask_resampled is not None:
+            slices_mask = self.slices_mask_resampled[self.activate_idx]
+            slices = slices * slices_mask
+        else:
+            slices_mask = None
+        warpped = slice_acquisition(
+            transforms,
+            volume,
+            self.volume_mask,
+            slices_mask,
+            self.psf,
+            slices.shape[-2:],
+            self.res_s * (2**self.current_level) / self.res_v,
+            False,
+            False,
+        )
+        return warpped, slices

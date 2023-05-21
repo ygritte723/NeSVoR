@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .srr import PSFreconstruction, SRR
+from ..svr.reconstruction import psf_reconstruction, SRR_CG
 from ..transform import (
     RigidTransform,
     mat_update_resolution,
@@ -55,7 +55,6 @@ class SVoRT(nn.Module):
             )
 
     def forward(self, data):
-
         params = {
             "psf": data["psf_rec"],
             "slice_shape": data["slice_shape"],
@@ -103,7 +102,7 @@ class SVoRT(nn.Module):
                 mat = mat_update_resolution(
                     _trans.matrix().detach(), 1, params["res_r"]
                 )
-                volume = PSFreconstruction(mat, stacks, mask_stacks, None, params)
+                volume = psf_reconstruction(mat, stacks, mask_stacks, None, params)
                 ax = mat2axisangle(_trans.matrix())
                 ax = ax_update_resolution(ax, 1, params["res_s"])
             if self.iqa:
@@ -151,10 +150,9 @@ class SVoRTv2(nn.Module):
         )
 
         if iqa:
-            self.srr = SRR(n_iter=2, use_CG=True)
+            self.srr = SRR_CG(n_iter=2)
 
     def forward(self, data):
-
         params = {
             "psf": data["psf_rec"],
             "slice_shape": data["slice_shape"],
@@ -199,7 +197,7 @@ class SVoRTv2(nn.Module):
                 mat = mat_update_resolution(
                     _trans.matrix().detach(), 1, params["res_r"]
                 )
-                volume = PSFreconstruction(mat, stacks, mask_stacks, None, params)
+                volume = psf_reconstruction(mat, stacks, mask_stacks, None, params)
             if self.iqa:
                 volume = self.srr(
                     mat, stacks, volume, params, iqa_score.view(-1, 1, 1, 1)
@@ -226,7 +224,7 @@ class SRRtransformer(nn.Module):
         dropout=0.1,
     ):
         super().__init__()
-        self.srr = SRR(n_iter=2, use_CG=True)
+        self.srr = SRR_CG(n_iter=2)
         self.img_encoder = ResNet(
             n_res=n_res, d_model=d_model, pretrained=False, d_in=2
         )

@@ -1,16 +1,16 @@
+from typing import Callable, Dict, Optional, Any, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from ..transform import axisangle2mat
 from ..slice_acquisition import slice_acquisition, slice_acquisition_adjoint
-from typing import Callable, Dict, Optional
 
 
 def dot(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     return torch.dot(x.flatten(), y.flatten())
 
 
-def CG(
+def cg(
     A: Callable, b: torch.Tensor, x0: torch.Tensor, n_iter: int, tol: float = 0.0
 ) -> torch.Tensor:
     if x0 is None:
@@ -37,13 +37,13 @@ def CG(
         dot_r_r = dot_r_r_new
 
 
-def PSFreconstruction(
+def psf_reconstruction(
     transforms: torch.Tensor,
     slices: torch.Tensor,
     slices_mask: Optional[torch.Tensor],
     vol_mask: Optional[torch.Tensor],
     params: Dict,
-):
+) -> torch.Tensor:
     return slice_acquisition_adjoint(
         transforms,
         params["psf"],
@@ -53,27 +53,21 @@ def PSFreconstruction(
         params["volume_shape"],
         params["res_s"] / params["res_r"],
         params["interp_psf"],
-        True,
+        equalize=True,
     )
 
 
-class SRR(nn.Module):
+class SRR_CG(nn.Module):
     def __init__(
         self,
         n_iter: int = 10,
-        use_CG: bool = False,
-        alpha: float = 0.5,
-        beta: float = 0.02,
-        delta: float = 0.1,
         tol: float = 0.0,
+        output_relu: bool = True,
     ) -> None:
         super().__init__()
         self.n_iter = n_iter
-        self.alpha = alpha
-        self.beta = beta * delta * delta
-        self.delta = delta
-        self.use_CG = use_CG
         self.tol = tol
+        self.output_relu = output_relu
 
     def forward(
         self,
@@ -92,29 +86,22 @@ class SRR(nn.Module):
         else:
             transforms = theta
 
-        A = lambda x: self.A(transforms, x, vol_mask, slices_mask, params)
+        # A = lambda x: self.A(transforms, x, vol_mask, slices_mask, params)
         At = lambda x: self.At(transforms, x, slices_mask, vol_mask, params)
         AtA = lambda x: self.AtA(transforms, x, vol_mask, slices_mask, p, params, mu, z)
 
         x = volume
         y = slices
 
-        if self.use_CG:
-            b = At(y * p if p is not None else y)
-            if mu and z is not None:
-                b = b + mu * z
-            x = CG(AtA, b, volume, self.n_iter, self.tol)
+        b = At(y * p if p is not None else y)
+        if mu and z is not None:
+            b = b + mu * z
+        x = cg(AtA, b, volume, self.n_iter, self.tol)
+
+        if self.output_relu:
+            return F.relu(x, True)
         else:
-            for _ in range(self.n_iter):
-                err = A(x) - y
-                if p is not None:
-                    err = p * err
-                g = At(err)
-                if self.beta:
-                    dR = self.dR(x, self.delta)
-                    g.add_(dR, alpha=self.beta)
-                x.add_(g, alpha=-self.alpha)
-        return F.relu(x, True)
+            return x
 
     def A(
         self,
@@ -175,25 +162,90 @@ class SRR(nn.Module):
             vol = vol + mu * x
         return vol
 
-    def dR(self, v: torch.Tensor, delta: float) -> torch.Tensor:
-        g = torch.zeros_like(v)
-        D, H, W = v.shape[-3:]
-        for dx in [-1, 0, 1]:
-            for dy in [-1, 0, 1]:
-                for dz in [-1, 0, 1]:
-                    if dx == 0 and dy == 0 and dz == 0:
-                        continue
-                    v0 = v[:, :, 1 : D - 1, 1 : H - 1, 1 : W - 1]
-                    v1 = v[
-                        :,
-                        :,
-                        1 + dz : D - 1 + dz,
-                        1 + dy : H - 1 + dy,
-                        1 + dx : W - 1 + dx,
-                    ]
-                    dv = v0 - v1
-                    dv_ = dv * (1 / (dx * dx + dy * dy + dz * dz) / (delta * delta))
-                    g[:, :, 1 : D - 1, 1 : H - 1, 1 : W - 1] += dv_ / torch.sqrt(
-                        1 + dv * dv_
-                    )
-        return g
+
+def srr_update(
+    transforms: torch.Tensor,
+    err: torch.Tensor,
+    volume: torch.Tensor,
+    slices_mask: Optional[torch.Tensor],
+    vol_mask: Optional[torch.Tensor],
+    p: Optional[torch.Tensor],
+    params: Dict[str, Any],
+    alpha: float,
+    beta: float,
+    delta: float,
+) -> torch.Tensor:
+    # beta = beta * delta * delta
+    if p is not None:
+        err = p * err
+    g = slice_acquisition_adjoint(
+        transforms,
+        params["psf"],
+        err,
+        slices_mask,
+        vol_mask,
+        params["volume_shape"],
+        params["res_s"] / params["res_r"],
+        params["interp_psf"],
+        False,
+    )
+    if p is not None:
+        cmap = slice_acquisition_adjoint(
+            transforms,
+            params["psf"],
+            p,
+            slices_mask,
+            vol_mask,
+            params["volume_shape"],
+            params["res_s"] / params["res_r"],
+            params["interp_psf"],
+            False,
+        )
+        cmap_mask = cmap > 0
+        g[cmap_mask] /= cmap[cmap_mask]
+    reconstructed = F.relu(volume + alpha * g, True)
+
+    g = torch.zeros_like(volume)
+    D, H, W = volume.shape[-3:]
+    v0 = volume[:, :, 1 : D - 1, 1 : H - 1, 1 : W - 1]
+    r0 = reconstructed[:, :, 1 : D - 1, 1 : H - 1, 1 : W - 1]
+    for dx in [-1, 0, 1]:
+        for dy in [-1, 0, 1]:
+            for dz in [-1, 0, 1]:
+                if dx == 0 and dy == 0 and dz == 0:
+                    continue
+                v1 = volume[
+                    :, :, 1 + dz : D - 1 + dz, 1 + dy : H - 1 + dy, 1 + dx : W - 1 + dx
+                ]
+                r1 = reconstructed[
+                    :, :, 1 + dz : D - 1 + dz, 1 + dy : H - 1 + dy, 1 + dx : W - 1 + dx
+                ]
+                d2 = dx * dx + dy * dy + dz * dz
+                dv2 = (v1 - v0) ** 2
+                b = 1 / (d2 * torch.sqrt(1 + 1 / (d2 * delta * delta) * dv2))
+                g[:, :, 1 : D - 1, 1 : H - 1, 1 : W - 1] += b * (r1 - r0)
+    if p is not None:
+        g *= cmap_mask
+    reconstructed.add_(g, alpha=alpha * beta)
+    return F.relu(reconstructed, True)
+
+
+def simulate_slices(
+    transforms: torch.Tensor,
+    volume: torch.Tensor,
+    vol_mask: Optional[torch.Tensor],
+    slices_mask: Optional[torch.Tensor],
+    params: Dict[str, Any],
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    slices_sim, weight = slice_acquisition(
+        transforms,
+        volume,
+        vol_mask,
+        slices_mask,
+        params["psf"],
+        params["slice_shape"],
+        params["res_s"] / params["res_r"],
+        True,
+        params["interp_psf"],
+    )
+    return slices_sim, weight

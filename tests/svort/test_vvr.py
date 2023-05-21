@@ -1,5 +1,5 @@
 from tests import TestCaseNeSVoR
-from nesvor.svort.registration import VVR
+from nesvor.svr.registration import VVR
 from nesvor.transform import RigidTransform
 from tests.phantom3d import phantom3d
 from nesvor.utils import ncc_loss
