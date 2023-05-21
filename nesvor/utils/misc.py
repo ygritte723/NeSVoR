@@ -6,6 +6,7 @@ from argparse import Namespace
 import os
 import random
 import numpy as np
+from .types import DeviceType
 
 
 def set_seed(seed: Optional[int]) -> None:
@@ -39,7 +40,7 @@ def meshgrid(
     shape_xyz: Collection,
     resolution_xyz: Collection,
     min_xyz: Optional[Collection] = None,
-    device=None,
+    device: DeviceType = None,
     stack_output: bool = True,
 ):
     assert len(shape_xyz) == len(resolution_xyz)
@@ -88,7 +89,9 @@ def gaussian_blur(
 
 
 # from MONAI
-def gaussian_1d_kernel(sigma: float, truncated: float, device) -> torch.Tensor:
+def gaussian_1d_kernel(
+    sigma: float, truncated: float, device: DeviceType
+) -> torch.Tensor:
     tail = int(max(sigma * truncated, 0.5) + 0.5)
     x = torch.arange(-tail, tail + 1, dtype=torch.float, device=device)
     t = 0.70710678 / sigma

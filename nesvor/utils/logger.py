@@ -55,7 +55,7 @@ def log_params(model: torch.nn.Module) -> LazyLog:
     return LazyLog(_log_params, model)
 
 
-def log_args(args: Namespace):
+def log_args(args: Namespace) -> None:
     d = vars(args)
     logging.debug(
         "input arguments\n"
