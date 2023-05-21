@@ -1,6 +1,7 @@
 from typing import List, Tuple, Optional
 import torch
 from math import log, sqrt
+from .types import DeviceType
 
 GAUSSIAN_FWHM = 1 / (2 * sqrt(2 * log(2)))
 SINC_FWHM = 1.206709128803223 * GAUSSIAN_FWHM
@@ -38,7 +39,8 @@ def get_PSF(
     r_max: Optional[int] = None,
     res_ratio: Tuple[float, float, float] = (1, 1, 3),
     threshold: float = 1e-3,
-    device=torch.device("cpu"),
+    device: DeviceType = torch.device("cpu"),
+    psf_type: str = "gaussian",
 ) -> torch.Tensor:
     sigma_x, sigma_y, sigma_z = resolution2sigma(res_ratio, isotropic=False)
     if r_max is None:
@@ -46,14 +48,21 @@ def get_PSF(
         r_max = max(r_max, 4)
     x = torch.linspace(-r_max, r_max, 2 * r_max + 1, dtype=torch.float32, device=device)
     grid_z, grid_y, grid_x = torch.meshgrid(x, x, x, indexing="ij")
-    psf = torch.exp(
-        -0.5
-        * (
-            grid_x**2 / sigma_x**2
-            + grid_y**2 / sigma_y**2
-            + grid_z**2 / sigma_z**2
+    if psf_type == "gaussian":
+        psf = torch.exp(
+            -0.5
+            * (
+                grid_x**2 / sigma_x**2
+                + grid_y**2 / sigma_y**2
+                + grid_z**2 / sigma_z**2
+            )
         )
-    )
+    elif psf_type == "sinc":
+        psf = torch.sinc(
+            torch.sqrt((grid_x / res_ratio[0]) ** 2 + (grid_y / res_ratio[1]) ** 2)
+        ) ** 2 * torch.exp(-0.5 * grid_z**2 / sigma_z**2)
+    else:
+        raise TypeError(f"Unknown PSF type: <{psf_type}>!")
     psf[psf.abs() < threshold] = 0
     rx = int(torch.nonzero(psf.sum((0, 1)) > 0)[0, 0].item())
     ry = int(torch.nonzero(psf.sum((0, 2)) > 0)[0, 0].item())
