@@ -725,7 +725,7 @@ def svort_predict(
         else:
             raise ValueError("unknown SVoRT version!")
         logging.debug("Loading SVoRT model")
-        model.to(device)
         model.load_state_dict(cp["model"])
+        model.to(device)
         model.eval()
     return run_svort(dataset, model, svort, vvr, force_vvr, force_scanner)

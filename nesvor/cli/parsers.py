@@ -237,6 +237,7 @@ def build_parser_training() -> argparse.ArgumentParser:
 
 
 def build_parser_inputs(
+    *,
     input_stacks: Union[bool, str] = False,
     input_slices: Union[bool, str] = False,
     input_model: Union[bool, str] = False,
@@ -307,7 +308,7 @@ def build_parser_inputs(
     return _parser
 
 
-def build_parser_stack_masking(stack_masks=True) -> argparse.ArgumentParser:
+def build_parser_stack_masking(*, stack_masks=True) -> argparse.ArgumentParser:
     """arguments related to ROI maksing for input stacks"""
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("input stacks masking")
@@ -346,6 +347,7 @@ def build_parser_stack_masking(stack_masks=True) -> argparse.ArgumentParser:
 
 
 def build_parser_outputs(
+    *,
     output_volume: Union[bool, str] = False,
     output_slices: Union[bool, str] = False,
     simulate_slices: Union[bool, str] = False,
@@ -430,8 +432,10 @@ def build_parser_outputs(
 
 
 def build_parser_outputs_sampling(
+    *,
     output_volume: Union[bool, str] = False,
     simulate_slices: Union[bool, str] = False,
+    use_model: bool = True,
     **kwargs,
 ) -> argparse.ArgumentParser:
     """arguments related to ouptuts sampling"""
@@ -450,20 +454,21 @@ def build_parser_outputs_sampling(
             type=float,
             help="mean intensity of the output volume",
         )
-        parser.add_argument(
-            "--inference-batch-size", type=int, help="batch size for inference"
-        )
-        parser.add_argument(
-            "--n-inference-samples",
-            type=int,
-            help="number of sample for PSF during inference",
-        )
-        parser.add_argument(
-            "--output-psf-factor",
-            type=float,
-            default=1.0,
-            help="Determind the psf for generating output volume: FWHM = output-resolution * output-psf-factor",
-        )
+        if use_model:
+            parser.add_argument(
+                "--inference-batch-size", type=int, help="batch size for inference"
+            )
+            parser.add_argument(
+                "--n-inference-samples",
+                type=int,
+                help="number of sample for PSF during inference",
+            )
+            parser.add_argument(
+                "--output-psf-factor",
+                type=float,
+                default=1.0,
+                help="Determind the psf for generating output volume: FWHM = output-resolution * output-psf-factor",
+            )
         parser.add_argument(
             "--sample-orientation",
             type=str,
@@ -697,6 +702,76 @@ def build_parser_volume_segmentation() -> argparse.ArgumentParser:
         action="store_true",
         help="Perform bias field correction before segmentation.",
     )
+    return _parser
+
+
+def build_parser_svr() -> argparse.ArgumentParser:
+    """arguments related to SVR"""
+    _parser = argparse.ArgumentParser(add_help=False)
+    # outlier removal
+    parser = _parser.add_argument_group("outlier removal")
+    parser.add_argument(
+        "--no-slice-robust-statistics",
+        action="store_true",
+        help="Disable slice-level robust statistics for outlier removal.",
+    )
+    parser.add_argument(
+        "--no-pixel-robust-statistics",
+        action="store_true",
+        help="Disable pixel-level robust statistics for outlier removal.",
+    )
+    parser.add_argument(
+        "--no-local-exclusion ",
+        action="store_true",
+        help="Disable pixel-level exclusion based on SSIM.",
+    )
+    parser.add_argument(
+        "--no-global-exclusion",
+        action="store_true",
+        help="Disable slice-level exclusion based on NCC.",
+    )
+    parser.add_argument(
+        "--global-ncc-threshold",
+        type=float,
+        default=0.5,
+        help="Threshold for global exclusion.",
+    )
+    parser.add_argument(
+        "--local-ssim-threshold",
+        type=float,
+        default=0.4,
+        help="Threshold for local exclusion.",
+    )
+    # optimization
+    parser = _parser.add_argument_group("optimization")
+    parser.add_argument(
+        "--with-background",
+        action="store_true",
+        help="Reconstruct the background in the volume.",
+    )
+    parser.add_argument(
+        "--n-iter", type=int, default=3, help="Number of iterations (outer loop)"
+    )
+    parser.add_argument(
+        "--n-iter-rec",
+        type=int,
+        nargs="+",
+        default=[7],
+        help=(
+            "Number of iterations of super-resolution reconstruction (inner loop). "
+            "Should be a list of int with length = n-iter. "
+            "If a single number N is provided, will use [N, N, ..., N*3]. "
+        ),
+    )
+    # regularization
+    parser = _parser.add_argument_group("regularization")
+    parser.add_argument(
+        "--delta",
+        type=float,
+        default=0.2,  # 150.0 / 700.0,
+        help="Parameter to define intensity of an edge in edge-preserving regularization. ",
+    )
+
     return _parser
 
 
@@ -944,6 +1019,38 @@ def build_command_segment_volume(
     return parser_segment_volume
 
 
+def build_command_svr(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
+    # svr
+    parser_svr = add_subcommand(
+        subparsers,
+        name="svr",
+        help="classical slice-to-volume reconstruction",
+        description=(
+            "This command implement a classical slice-to-volume with a robust motion correction method (SVoRT). "
+            "It can only be applied to both rigid (e.g., brain) motion. "
+        ),
+        parents=[
+            build_parser_inputs(input_stacks=True, input_slices=True),
+            build_parser_stack_masking(),
+            build_parser_outputs(
+                output_volume="required",
+                output_slices=True,
+                simulate_slices=True,
+            ),
+            build_parser_outputs_sampling(output_volume=True, simulate_slices=True),
+            build_parser_segmentation(optional=True),
+            build_parser_bias_field_correction(optional=True),
+            build_parser_assessment(),
+            build_parser_svort(),
+            build_parser_svr(),
+            build_parser_common(),
+        ],
+    )
+    return parser_svr
+
+
 def main_parser(
     title="commands", metavar="COMMAND", dest="command"
 ) -> Tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
@@ -974,6 +1081,7 @@ def main_parser(
     build_command_correct_bias_field(subparsers)
     build_command_assess(subparsers)
     build_command_segment_volume(subparsers)
+    build_command_svr(subparsers)
     return parser, subparsers
 
 

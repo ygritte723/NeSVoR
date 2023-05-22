@@ -14,6 +14,7 @@ from ..utils import makedirs, log_args, log_result
 from ..preprocessing.masking import brain_segmentation
 from ..preprocessing import bias_field, assessment
 from ..segmentation import twai
+from ..svr.pipeline import slice_to_volume_reconstruction
 
 
 class Command(object):
@@ -26,7 +27,7 @@ class Command(object):
 
     def get_command(self) -> str:
         return "-".join(
-            w.lower() for w in re.findall("[A-Z][^A-Z]*", self.__class__.__name__)
+            w.lower() for w in re.findall("[A-Z]+[^A-Z]*", self.__class__.__name__)
         )
 
     def new_timer(self, name: Optional[str] = None) -> None:
@@ -79,31 +80,7 @@ class Command(object):
 class Reconstruct(Command):
     def check_args(self) -> None:
         # input
-        assert (
-            self.args.input_slices is not None or self.args.input_stacks is not None
-        ), "No image data provided! Use --input-slices or --input-stacks to input data."
-        if self.args.input_slices is not None:
-            # use input slices
-            if (
-                self.args.stack_masks is not None
-                or self.args.input_stacks is not None
-                or self.args.thicknesses is not None
-            ):
-                logging.warning(
-                    "Since <input-slices> is provided, <input-stacks>, <stack_masks> and <thicknesses> would be ignored."
-                )
-                self.args.stack_masks = None
-                self.args.input_stacks = None
-                self.args.thicknesses = None
-        else:
-            # use input stacks
-            check_len(self.args, "input_stacks", "stack_masks")
-            if self.args.thicknesses is not None:
-                if len(self.args.thicknesses) == 1:
-                    self.args.thicknesses = self.args.thicknesses * len(
-                        self.args.input_stacks
-                    )
-            check_len(self.args, "input_stacks", "thicknesses")
+        check_input_stacks_slices(self.args)
         # output
         if self.args.output_volume is None and self.args.output_model is None:
             logging.warning("Both <output-volume> and <output-model> are not provided.")
@@ -128,40 +105,44 @@ class Reconstruct(Command):
         # dtype
         self.args.dtype = torch.float32 if self.args.single_precision else torch.float16
 
-    def exec(self) -> None:
+    def preprocess(self) -> Dict[str, Any]:
         self.new_timer("Data loading")
-        input_dict, args = inputs(self.args)
+        input_dict, self.args = inputs(self.args)
         if "input_stacks" in input_dict and input_dict["input_stacks"]:
             if self.args.segmentation:
                 self.new_timer("Segmentation")
                 input_dict["input_stacks"] = segment_stack(
-                    args, input_dict["input_stacks"]
+                    self.args, input_dict["input_stacks"]
                 )
             if self.args.bias_field_correction:
                 self.new_timer("Bias Field Correction")
                 input_dict["input_stacks"] = correct_bias_field(
-                    args, input_dict["input_stacks"]
+                    self.args, input_dict["input_stacks"]
                 )
             if self.args.metric != "none":
                 self.new_timer("Assessment")
                 input_dict["input_stacks"], assessment_results = assess(
-                    args, input_dict["input_stacks"], False
+                    self.args, input_dict["input_stacks"], False
                 )
             self.new_timer("Registration")
-            slices = register(args, input_dict["input_stacks"])
+            input_dict["input_slices"] = register(self.args, input_dict["input_stacks"])
         elif "input_slices" in input_dict and input_dict["input_slices"]:
-            slices = input_dict["input_slices"]
+            pass
         else:
             raise ValueError("No data found!")
+        return input_dict
+
+    def exec(self) -> None:
+        input_dict = self.preprocess()
         self.new_timer("Reconsturction")
-        model, output_slices, mask = train(slices, args)
+        model, output_slices, mask = train(input_dict["input_slices"], self.args)
         self.new_timer("Results saving")
         if getattr(input_dict, "volume_mask", None):
             mask = input_dict["volume_mask"]
-        output_volume = sample_volume(model, mask, args)
+        output_volume = sample_volume(model, mask, self.args)
         simulated_slices = (
-            sample_slices(model, output_slices, mask, args)
-            if getattr(args, "simulated_slices", None)
+            sample_slices(model, output_slices, mask, self.args)
+            if getattr(self.args, "simulated_slices", None)
             else None
         )
         outputs(
@@ -172,30 +153,33 @@ class Reconstruct(Command):
                 "output_slices": output_slices,
                 "simulated_slices": simulated_slices,
             },
-            args,
+            self.args,
         )
 
 
 class SampleVolume(Command):
     def exec(self) -> None:
         self.new_timer("Data loading")
-        input_dict, args = inputs(self.args)
+        input_dict, self.args = inputs(self.args)
         self.new_timer("Volume sampling")
-        v = sample_volume(input_dict["model"], input_dict["mask"], args)
+        v = sample_volume(input_dict["model"], input_dict["mask"], self.args)
         self.new_timer("Results saving")
-        outputs({"output_volume": v}, args)
+        outputs({"output_volume": v}, self.args)
 
 
 class SampleSlices(Command):
     def exec(self) -> None:
         self.new_timer("Data loading")
-        input_dict, args = inputs(self.args)
+        input_dict, self.args = inputs(self.args)
         self.new_timer("Slices sampling")
         simulated_slices = sample_slices(
-            input_dict["model"], input_dict["input_slices"], input_dict["mask"], args
+            input_dict["model"],
+            input_dict["input_slices"],
+            input_dict["mask"],
+            self.args,
         )
         self.new_timer("Results saving")
-        outputs({"simulated_slices": simulated_slices}, args)
+        outputs({"simulated_slices": simulated_slices}, self.args)
 
 
 class Register(Command):
@@ -206,13 +190,13 @@ class Register(Command):
 
     def exec(self) -> None:
         self.new_timer("Data loading")
-        input_dict, args = inputs(self.args)
+        input_dict, self.args = inputs(self.args)
         if not ("input_stacks" in input_dict and input_dict["input_stacks"]):
             raise ValueError("No data found!")
         self.new_timer("Registration")
-        slices = register(args, input_dict["input_stacks"])
+        slices = register(self.args, input_dict["input_stacks"])
         self.new_timer("Results saving")
-        outputs({"output_slices": slices}, args)
+        outputs({"output_slices": slices}, self.args)
 
 
 def register(args: argparse.Namespace, data: List[Stack]) -> List[Slice]:
@@ -259,15 +243,15 @@ class SegmentStack(Command):
 
     def exec(self) -> None:
         self.new_timer("Data loading")
-        input_dict, args = inputs(self.args)
+        input_dict, self.args = inputs(self.args)
         if not ("input_stacks" in input_dict and input_dict["input_stacks"]):
             raise ValueError("No data found!")
         self.new_timer("Segmentation")
-        seg_stacks = segment_stack(args, input_dict["input_stacks"])
+        seg_stacks = segment_stack(self.args, input_dict["input_stacks"])
         self.new_timer("Results saving")
         outputs(
             {"output_stack_masks": [stack.get_mask_volume() for stack in seg_stacks]},
-            args,
+            self.args,
         )
 
 
@@ -297,11 +281,11 @@ class CorrectBiasField(Command):
 
     def exec(self) -> None:
         self.new_timer("Data loading")
-        input_dict, args = inputs(self.args)
+        input_dict, self.args = inputs(self.args)
         if not ("input_stacks" in input_dict and input_dict["input_stacks"]):
             raise ValueError("No data found!")
         self.new_timer("Bias field correction")
-        corrected_stacks = correct_bias_field(args, input_dict["input_stacks"])
+        corrected_stacks = correct_bias_field(self.args, input_dict["input_stacks"])
         self.new_timer("Results saving")
         outputs(
             {
@@ -309,7 +293,7 @@ class CorrectBiasField(Command):
                     stack.get_volume() for stack in corrected_stacks
                 ]
             },
-            args,
+            self.args,
         )
 
 
@@ -329,14 +313,14 @@ class Assess(Command):
 
     def exec(self) -> None:
         self.new_timer("Data loading")
-        input_dict, args = inputs(self.args)
+        input_dict, self.args = inputs(self.args)
         self.new_timer("Assessment")
         _, results = assess(self.args, input_dict["input_stacks"], True)
-        if args.output_json:
+        if self.args.output_json:
             self.new_timer("Results saving")
-            args.output_assessment = results
-            outputs({}, args)
-            log_result("Assessment results saved to %s" % args.output_json)
+            self.args.output_assessment = results
+            outputs({}, self.args)
+            log_result("Assessment results saved to %s" % self.args.output_json)
 
 
 def assess(
@@ -383,22 +367,46 @@ def assess(
 
 
 class SegmentVolume(Command):
-    def check_args(self) -> None:
-        pass
-
     def exec(self) -> None:
         self.new_timer("volume segmentation")
-        args = argparse.Namespace(
-            output_folder=(
-                "/home/junshen/trustworthy-ai-fetal-brain-segmentation/output"
-            ),
-            input="/home/junshen/SVoRT/github/NeSVoR/out.nii.gz",
-            mask="/home/junshen/SVoRT/github/NeSVoR/out.nii.gz",
-            ga=None,
-            condition="Neurotypical",
-        )
         self.args.name = "segmentation"
         twai(self.args)
+
+
+class SVR(Reconstruct):
+    def check_args(self) -> None:
+        # input
+        check_input_stacks_slices(self.args)
+        # assessment
+        check_cutoff(self.args)
+        # registration
+        svort_v1_warning(self.args)
+        # optimization
+        if len(self.args.n_iter_rec) == 1:
+            self.args.n_iter_rec = [self.args.n_iter_rec[0]] * self.args.n_iter
+            self.args.n_iter_rec[-1] *= 3
+        assert (
+            len(self.args.n_iter_rec) == self.args.n_iter
+        ), "the length of n_iter_rec should be equal to n_iter!"
+
+    def exec(self) -> None:
+        input_dict = self.preprocess()
+        self.new_timer("Reconsturction")
+        output_volume, output_slices, simulated_slices = slice_to_volume_reconstruction(
+            input_dict["input_slices"], **vars(self.args)
+        )
+        self.new_timer("Results saving")
+        outputs(
+            {
+                "output_volume": output_volume,
+                "output_slices": output_slices,
+                "simulated_slices": simulated_slices,
+            },
+            self.args,
+        )
+
+
+Svr = SVR
 
 
 """warnings and checks"""
@@ -421,3 +429,30 @@ def check_len(args: argparse.Namespace, k1: str, k2: str) -> None:
 def check_cutoff(args: argparse.Namespace) -> None:
     if args.filter_method != "none" and args.cutoff is None:
         raise ValueError("--cutoff for filtering is not provided!")
+
+
+def check_input_stacks_slices(args: argparse.Namespace) -> None:
+    # input
+    assert (
+        args.input_slices is not None or args.input_stacks is not None
+    ), "No image data provided! Use --input-slices or --input-stacks to input data."
+    if args.input_slices is not None:
+        # use input slices
+        if (
+            args.stack_masks is not None
+            or args.input_stacks is not None
+            or args.thicknesses is not None
+        ):
+            logging.warning(
+                "Since <input-slices> is provided, <input-stacks>, <stack_masks> and <thicknesses> would be ignored."
+            )
+            args.stack_masks = None
+            args.input_stacks = None
+            args.thicknesses = None
+    else:
+        # use input stacks
+        check_len(args, "input_stacks", "stack_masks")
+        if args.thicknesses is not None:
+            if len(args.thicknesses) == 1:
+                args.thicknesses = args.thicknesses * len(args.input_stacks)
+        check_len(args, "input_stacks", "thicknesses")

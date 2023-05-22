@@ -24,10 +24,9 @@ class Image(object):
         resolution_y: Union[float, torch.Tensor] = 1.0,
         resolution_z: Union[float, torch.Tensor] = 1.0,
     ) -> None:
-        assert image.ndim == 3
         self.image = image
         if mask is None:
-            mask = torch.ones_like(image, dtype=torch.bool)
+            mask = torch.ones_like(self.image, dtype=torch.bool)
         self.mask = mask
         if transformation is None:
             transformation = RigidTransform(
@@ -37,6 +36,48 @@ class Image(object):
         self.resolution_x = resolution_x
         self.resolution_y = resolution_y
         self.resolution_z = resolution_z
+
+    @property
+    def image(self) -> torch.Tensor:
+        return self._image
+
+    @image.setter
+    def image(self, value: torch.Tensor) -> None:
+        assert isinstance(value, torch.Tensor), "Image must be Tensor!"
+        assert value.ndim == 3, "The dimension of image must be 3!"
+        self._image = value
+
+    @property
+    def mask(self) -> torch.Tensor:
+        return self._mask
+
+    @mask.setter
+    def mask(self, value: torch.Tensor) -> None:
+        assert isinstance(value, torch.Tensor), "Mask must be Tensor!"
+        assert value.ndim == 3, "The dimension of mask must be 3!"
+        assert (
+            value.shape == self.image.shape
+        ), "Mask must have the same shape as image!"
+        assert value.dtype == torch.bool, "Mask must be bool!"
+        assert value.device == self.device, "The device of mask is different!"
+        self._mask = value
+
+    @property
+    def transformation(self) -> RigidTransform:
+        return self._transformation
+
+    @transformation.setter
+    def transformation(self, value: RigidTransform) -> None:
+        assert isinstance(
+            value, RigidTransform
+        ), "Transformation must be RigidTransform!"
+        assert len(value) == 1, "The len of transformation must be 1!"
+        assert value.device == self.device, "The device of transformation is different!"
+        self._transformation = value
+
+    @property
+    def device(self) -> DeviceType:
+        return self.image.device
 
     def clone(self, zero: bool = False):
         raise NotImplementedError
