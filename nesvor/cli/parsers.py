@@ -1028,8 +1028,8 @@ def build_command_svr(
         name="svr",
         help="classical slice-to-volume reconstruction",
         description=(
-            "This command implement a classical slice-to-volume with a robust motion correction method (SVoRT). "
-            "It can only be applied to both rigid (e.g., brain) motion. "
+            "This command implements a classical slice-to-volume reconstruction pipeline with a robust motion correction method (SVoRT). "
+            "It can only be applied to data with rigid motion (e.g., brain). "
         ),
         parents=[
             build_parser_inputs(input_stacks=True, input_slices=True),

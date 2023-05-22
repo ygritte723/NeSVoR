@@ -1,6 +1,8 @@
 Commands
 **********************
 
+The command line interface provided in NeSVoR.
+
 .. toctree::
    :maxdepth: 1
 
