@@ -93,7 +93,7 @@ def build_monaifbs_net(device):
         res_block=False,
     )
 
-    net.load_state_dict(torch.load(get_monaifbs_checkpoint())["net"])
+    net.load_state_dict(torch.load(get_monaifbs_checkpoint(), device)["net"])
     net = net.to(device)
     net.eval()
 
