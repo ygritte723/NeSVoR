@@ -1,7 +1,7 @@
 Here is how to build a docker image for NeSVoR (only with SVoRT model)
 
 ```
-# pull source
+# pull latest source
 rm -rf ./NeSVoR
 git clone https://github.com/daviddmc/NeSVoR.git
 # download SVoRT model
@@ -14,6 +14,6 @@ docker run --name nesvor_container --gpus all -it junshenxu/nesvor /bin/bash
 cd NeSVoR
 sh install.sh
 exit
-# commit
+# commit container to image
 docker commit nesvor_container junshenxu/nesvor
 ```

@@ -11,9 +11,9 @@ Fetal brain reconstruction
 NeSVoR is able to reconstruct a 3D fetal brain from mutiple stacks of 2D images in the following steps 
 (This is also the most common use case of the toolkit):
 
-#. Segment fetal brain from each image using a CNN (``--segmentation``  `ref <reconstruct.html#segmentation>`__ ).
-#. Correct bias field in each stack using the N4 algorithm (``--bias-field-correction``  `ref <reconstruct.html#bias-field-correction>`__ ).
-#. Register slices using SVoRT (it is the default of ``--registration``  `ref <reconstruct.html#registration>`__ ).
+#. Segment fetal brain from each image using a CNN (``--segmentation``  `ref <commands/reconstruct.html#segmentation>`__ ).
+#. Correct bias field in each stack using the N4 algorithm (``--bias-field-correction``  `ref <commands/reconstruct.html#bias-field-correction>`__ ).
+#. Register slices using SVoRT (it is the default of ``--registration``  `ref <commands/reconstruct.html#registration>`__ ).
 #. Reconstruct a 3D volume using NeSVoR.
 
 .. code-block:: nesvorcommand
@@ -36,8 +36,8 @@ Therefore, the CNN segmenter is replaced by the Otsu method.
 
 The following example reconstructs a 3D neonatal brain in the following steps:
 
-#. Removal background (air) with Otsu thresholding (``--otsu-thresholding``  `ref <reconstruct.html#otsu-thresholding>`__).
-#. Correct bias field in each stack using the N4 algorithm (``--bias-field-correction``  `ref <reconstruct.html#bias-field-correction>`__).
+#. Removal background (air) with Otsu thresholding (``--otsu-thresholding``  `ref <commands/reconstruct.html#otsu-thresholding>`__).
+#. Correct bias field in each stack using the N4 algorithm (``--bias-field-correction``  `ref <commands/reconstruct.html#bias-field-correction>`__).
 #. Register slices using SVoRT.
 #. Reconstruct a 3D volume using NeSVoR.
 
@@ -62,9 +62,9 @@ e.g., fetal body and uterus.
 
 This is an example for deformable NeSVoR which consists of the following steps:
 
-#. Create an ROI based on the intersection of all input stacks (``--stacks-intersection``  `ref <reconstruct.html#stacks-intersection>`__).
-#. Perform stack-to-stack registration (``--registration stack``  `ref <reconstruct.html#registration>`__).
-#. Reconstruct a 3D volume using Deformable NeSVoR (``--deformable``  `ref <reconstruct.html#deformable>`__).
+#. Create an ROI based on the intersection of all input stacks (``--stacks-intersection``  `ref <commands/reconstruct.html#stacks-intersection>`__).
+#. Perform stack-to-stack registration (``--registration stack``  `ref <commands/reconstruct.html#registration>`__).
+#. Reconstruct a 3D volume using Deformable NeSVoR (``--deformable``  `ref <commands/reconstruct.html#deformable>`__).
 
 .. code-block:: nesvorcommand
 

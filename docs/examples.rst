@@ -87,7 +87,7 @@ and then saves the motion-corrected slices to a folder.
     --registration <method> \
     --output-slices <path-to-save-output-slices>
 
-The list of supported methods in ``register`` is `here <register.html#registration>`__.
+The list of supported methods in ``register`` is `here <commands/register.html#registration>`__.
 
 Sampling
 --------
@@ -170,7 +170,7 @@ An example is as follows.
         --metric <metric> \
         --output-json result.json 
 
-The provided metrics are listed `here <assess.html#metric>`__.
+The provided metrics are listed `here <commands/assess.html#metric>`__.
 
 
 3D brain segmentation
