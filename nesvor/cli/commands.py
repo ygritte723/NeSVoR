@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple, Dict, Any
 from ..image import Stack, Slice
 from ..svort.inference import svort_predict
 from ..nesvor.train import train
-from ..nesvor.sample import sample_volume, sample_slices
+from ..nesvor.sample import sample_volume, sample_slices, override_sample_mask
 from .io import outputs, inputs
 from ..utils import makedirs, log_args, log_result
 from ..preprocessing.masking import brain_segmentation
@@ -139,9 +139,28 @@ class Reconstruct(Command):
         self.new_timer("Results saving")
         if getattr(input_dict, "volume_mask", None):
             mask = input_dict["volume_mask"]
-        output_volume = sample_volume(model, mask, self.args)
+        mask = override_sample_mask(
+            mask,
+            self.args.sample_mask,
+            self.args.output_resolution,
+            self.args.sample_orientation,
+        )
+        output_volume = sample_volume(
+            model,
+            mask,
+            self.args.output_resolution,
+            self.args.output_psf_factor,
+            self.args.inference_batch_size,
+            self.args.n_inference_samples,
+        )
         simulated_slices = (
-            sample_slices(model, output_slices, mask, self.args)
+            sample_slices(
+                model,
+                output_slices,
+                mask,
+                self.args.output_psf_factor,
+                self.args.n_inference_samples,
+            )
             if getattr(self.args, "simulated_slices", None)
             else None
         )
@@ -162,7 +181,20 @@ class SampleVolume(Command):
         self.new_timer("Data loading")
         input_dict, self.args = inputs(self.args)
         self.new_timer("Volume sampling")
-        v = sample_volume(input_dict["model"], input_dict["mask"], self.args)
+        mask = override_sample_mask(
+            input_dict["mask"],
+            self.args.sample_mask,
+            self.args.output_resolution,
+            self.args.sample_orientation,
+        )
+        v = sample_volume(
+            input_dict["model"],
+            mask,
+            self.args.output_resolution,
+            self.args.output_psf_factor,
+            self.args.inference_batch_size,
+            self.args.n_inference_samples,
+        )
         self.new_timer("Results saving")
         outputs({"output_volume": v}, self.args)
 
@@ -172,11 +204,16 @@ class SampleSlices(Command):
         self.new_timer("Data loading")
         input_dict, self.args = inputs(self.args)
         self.new_timer("Slices sampling")
+        mask = override_sample_mask(
+            input_dict["mask"],
+            self.args.sample_mask,
+        )
         simulated_slices = sample_slices(
             input_dict["model"],
             input_dict["input_slices"],
-            input_dict["mask"],
-            self.args,
+            mask,
+            self.args.output_psf_factor,
+            self.args.n_inference_samples,
         )
         self.new_timer("Results saving")
         outputs({"simulated_slices": simulated_slices}, self.args)
