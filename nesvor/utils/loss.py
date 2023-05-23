@@ -14,6 +14,7 @@ def ncc_loss(
     reduction: str = "none",
 ) -> torch.Tensor:
     spatial_dims = len(I.shape) - 2
+    assert spatial_dims in (1, 2, 3), "ncc_loss only support 3D, 4D, and 5D data"
 
     if mask is not None:
         I = I * mask

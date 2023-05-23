@@ -174,6 +174,10 @@ def slice_acquisition(
     need_weight: bool,
     interp_psf: bool,
 ):
+    assert transforms.ndim == 3
+    assert vol.ndim == 5
+    assert vol_mask is None or vol_mask.ndim == 5
+    assert slices_mask is None or slices_mask.ndim == 4
     return SliceAcqFunction.apply(
         transforms,
         vol,
@@ -198,6 +202,10 @@ def slice_acquisition_adjoint(
     interp_psf: bool,
     equalize: bool,
 ):
+    assert transforms.ndim == 3
+    assert slices.ndim == 4
+    assert vol_mask is None or vol_mask.ndim == 5
+    assert slices_mask is None or slices_mask.ndim == 4
     return SliceAcqAdjointFunction.apply(
         transforms,
         psf,
