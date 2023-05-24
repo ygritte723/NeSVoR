@@ -763,6 +763,13 @@ def build_parser_svr() -> argparse.ArgumentParser:
             "If a single number N is provided, will use [N, N, ..., N*3]. "
         ),
     )
+    parser.add_argument(
+        "--psf",
+        type=str,
+        default="gaussian",
+        choices=["gaussian", "sinc"],
+        help="Type of point spread function (PSF) used in data acquisition.",
+    )
     # regularization
     parser = _parser.add_argument_group("regularization")
     parser.add_argument(

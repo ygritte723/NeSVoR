@@ -1,7 +1,8 @@
+from typing import Optional, Dict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from ..svr.reconstruction import psf_reconstruction, SRR_CG
+from ..svr.reconstruction import cg
 from ..transform import (
     RigidTransform,
     mat_update_resolution,
@@ -11,7 +12,7 @@ from ..transform import (
     mat2point,
 )
 from .attention import TransformerEncoder, PositionalEncoding, ResNet
-from ..slice_acquisition import slice_acquisition
+from ..slice_acquisition import slice_acquisition, slice_acquisition_adjoint
 
 # main models
 
@@ -58,10 +59,8 @@ class SVoRT(nn.Module):
         params = {
             "psf": data["psf_rec"],
             "slice_shape": data["slice_shape"],
-            "interp_psf": False,
             "res_s": data["resolution_slice"],
             "res_r": data["resolution_recon"],
-            "s_thick": data["slice_thickness"],
             "volume_shape": data["volume_shape"],
         }
 
@@ -102,7 +101,18 @@ class SVoRT(nn.Module):
                 mat = mat_update_resolution(
                     _trans.matrix().detach(), 1, params["res_r"]
                 )
-                volume = psf_reconstruction(mat, stacks, mask_stacks, None, params)
+                # volume = psf_reconstruction(mat, stacks, mask_stacks, None, params)
+                volume = slice_acquisition_adjoint(
+                    mat,
+                    params["psf"],
+                    stacks,
+                    mask_stacks,
+                    None,
+                    params["volume_shape"],
+                    params["res_s"] / params["res_r"],
+                    False,
+                    equalize=True,
+                )
                 ax = mat2axisangle(_trans.matrix())
                 ax = ax_update_resolution(ax, 1, params["res_s"])
             if self.iqa:
@@ -150,16 +160,14 @@ class SVoRTv2(nn.Module):
         )
 
         if iqa:
-            self.srr = SRR_CG(n_iter=2)
+            self.srr = SRR(n_iter=2)
 
     def forward(self, data):
         params = {
             "psf": data["psf_rec"],
             "slice_shape": data["slice_shape"],
-            "interp_psf": False,
             "res_s": data["resolution_slice"],
             "res_r": data["resolution_recon"],
-            "s_thick": data["slice_thickness"],
             "volume_shape": data["volume_shape"],
         }
 
@@ -197,7 +205,18 @@ class SVoRTv2(nn.Module):
                 mat = mat_update_resolution(
                     _trans.matrix().detach(), 1, params["res_r"]
                 )
-                volume = psf_reconstruction(mat, stacks, mask_stacks, None, params)
+                # volume = psf_reconstruction(mat, stacks, mask_stacks, None, params)
+                volume = slice_acquisition_adjoint(
+                    mat,
+                    params["psf"],
+                    stacks,
+                    mask_stacks,
+                    None,
+                    params["volume_shape"],
+                    params["res_s"] / params["res_r"],
+                    False,
+                    equalize=True,
+                )
             if self.iqa:
                 volume = self.srr(
                     mat, stacks, volume, params, iqa_score.view(-1, 1, 1, 1)
@@ -224,7 +243,7 @@ class SRRtransformer(nn.Module):
         dropout=0.1,
     ):
         super().__init__()
-        self.srr = SRR_CG(n_iter=2)
+        self.srr = SRR(n_iter=2)
         self.img_encoder = ResNet(
             n_res=n_res, d_model=d_model, pretrained=False, d_in=2
         )
@@ -250,7 +269,7 @@ class SRRtransformer(nn.Module):
             params["slice_shape"],
             params["res_s"] / params["res_r"],
             False,
-            params["interp_psf"],
+            False,
         )
         idx = torch.cat((theta, idx), -1)
         x = torch.cat((slices, slices_est), 1)
@@ -350,7 +369,7 @@ class SVRtransformer(nn.Module):
                     params["slice_shape"],
                     params["res_s"] / params["res_r"],
                     False,
-                    params["interp_psf"],
+                    False,
                 )
         pos = torch.cat((theta, pos), -1)
         pe = self.pos_emb(pos)
@@ -435,7 +454,7 @@ class SVRtransformerV2(nn.Module):
                     params["slice_shape"],
                     params["res_s"] / params["res_r"],
                     False,
-                    params["interp_psf"],
+                    False,
                 )
         pos = torch.cat((theta, pos), -1)
         pe = self.pos_emb(pos)
@@ -453,3 +472,84 @@ class SVRtransformerV2(nn.Module):
         score = torch.clamp(score, max=3.0)
 
         return theta + dtheta, score, attn
+
+
+class SRR(nn.Module):
+    def __init__(
+        self,
+        n_iter: int = 10,
+        tol: float = 0.0,
+        output_relu: bool = True,
+    ) -> None:
+        super().__init__()
+        self.n_iter = n_iter
+        self.tol = tol
+        self.output_relu = output_relu
+
+    def forward(
+        self,
+        transforms: torch.Tensor,
+        slices: torch.Tensor,
+        volume: torch.Tensor,
+        params: Dict,
+        p: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        At = lambda x: self.At(transforms, x, params)
+        AtA = lambda x: self.AtA(transforms, x, p, params)
+
+        b = At(slices * p if p is not None else slices)
+        volume = cg(AtA, b, volume, self.n_iter, self.tol)
+
+        if self.output_relu:
+            return F.relu(volume, True)
+        else:
+            return volume
+
+    def A(
+        self,
+        transforms: torch.Tensor,
+        x: torch.Tensor,
+        params: Dict,
+    ) -> torch.Tensor:
+        return slice_acquisition(
+            transforms,
+            x,
+            None,
+            None,
+            params["psf"],
+            params["slice_shape"],
+            params["res_s"] / params["res_r"],
+            False,
+            False,
+        )
+
+    def At(
+        self,
+        transforms: torch.Tensor,
+        x: torch.Tensor,
+        params: Dict,
+    ) -> torch.Tensor:
+        return slice_acquisition_adjoint(
+            transforms,
+            params["psf"],
+            x,
+            None,
+            None,
+            params["volume_shape"],
+            params["res_s"] / params["res_r"],
+            False,
+            False,
+        )
+
+    def AtA(
+        self,
+        transforms: torch.Tensor,
+        x: torch.Tensor,
+        p: Optional[torch.Tensor],
+        params: Dict,
+    ) -> torch.Tensor:
+        slices = self.A(transforms, x, params)
+        if p is not None:
+            slices = slices * p
+        vol = self.At(transforms, slices, params)
+        return vol

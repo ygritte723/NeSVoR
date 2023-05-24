@@ -1,7 +1,10 @@
 import torch
 import torch.nn as nn
 import logging
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, cast
+from ..image import Stack, Volume
+from .reconstruction import simulate_slices
+from ..utils import ncc_loss, ssim_loss
 
 
 class EM(nn.Module):
@@ -25,12 +28,20 @@ class EM(nn.Module):
 
     def forward(
         self,
-        err: torch.Tensor,
-        weight: torch.Tensor,
-        scale: torch.Tensor,
-        slices_mask: torch.Tensor,
+        e: Stack,
+        weight: Optional[Union[Stack, torch.Tensor]] = None,
+        scale: Optional[torch.Tensor] = None,
         n_iter: int = 3,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        # get inputs
+        err = e.slices
+        slices_mask = e.mask
+        if weight is not None:
+            if isinstance(weight, Stack):
+                weight = weight.slices
+        else:
+            weight = torch.ones_like(err)
+
         mask_voxel_low = weight > 0
         mask_voxel_high = weight > 0.99
 
@@ -74,13 +85,14 @@ class EM(nn.Module):
         potential = ((1 - self.p_voxel) ** 2) * mask_voxel_high
         potential = torch.sqrt(potential.sum((1, 2, 3)) / denom)
         mask_1 = denom > 0
-
+        mask_slice = mask_1
         slices_mask_sum = slices_mask.sum((1, 2, 3))
         mask_2 = slices_mask_sum > slices_mask_sum.median() * 0.1
+        mask_slice = mask_slice & mask_2
 
-        mask_3 = (scale > 0.2) & (scale < 5)
-
-        mask_slice = mask_1 & mask_2 & mask_3
+        if scale is not None:
+            mask_3 = (scale > 0.2) & (scale < 5)
+            mask_slice = mask_slice & mask_3
 
         if self.p_slice is None:
             self.p_slice = torch.ones_like(mask_slice, dtype=torch.float)
@@ -155,3 +167,40 @@ def slice_outlier_update(
     logging.debug("N_in = %d, mu_in = %f, mu_out = %f, c=%f", N_in, mu_in, mu_out, c)
 
     return c, p
+
+
+def global_ncc_exclusion(stack: Stack, volume: Volume, threshold) -> torch.Tensor:
+    ncc = -ncc_loss(
+        cast(Stack, simulate_slices(stack, volume, True, True)[0]).slices,
+        stack.slices,
+        stack.mask,
+        win=None,
+        reduction="none",
+    )
+    excluded = ncc < threshold
+    num_excluded = torch.count_nonzero(excluded).item()
+    if num_excluded == excluded.shape[0]:
+        logging.warning("All slices excluded according to global NCC. Reset.")
+        excluded = torch.zeros_like(excluded)
+        num_excluded = 0
+    logging.info(
+        "global structural exlusion: mean ncc = %f, num_excluded = %d, mean ncc after exclusion = %f",
+        ncc.mean().item(),
+        num_excluded,
+        ncc[~excluded].mean().item(),
+    )
+    return excluded
+
+
+def local_ssim_exclusion(
+    stack: Stack, slices_sim: Union[Stack, torch.Tensor], threshold: float
+) -> torch.Tensor:
+    if isinstance(slices_sim, Stack):
+        slices_sim = slices_sim.slices
+    ssim_map = -ssim_loss(slices_sim, stack.slices, stack.mask)
+    logging.info(
+        "local structural exlusion: mean ssim = %f, ratio downweighted = %f",
+        ssim_map[stack.mask].mean().item(),
+        (ssim_map[stack.mask] <= threshold).float().mean().item(),
+    )
+    return torch.where(ssim_map > threshold, 1.0, 0.1)

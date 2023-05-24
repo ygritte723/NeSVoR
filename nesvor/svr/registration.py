@@ -1,24 +1,24 @@
+import types
+from typing import Dict, Any, Tuple, Sequence, Callable, Union, cast, Optional, List
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from ..transform import RigidTransform, axisangle2mat, mat_update_resolution
 from ..utils import ncc_loss, gaussian_blur, meshgrid, get_PSF
 from ..slice_acquisition import slice_acquisition
-import numpy as np
-import types
-from typing import Dict, Any, Tuple, Sequence, Callable, Union, cast, Optional
+from ..image import Volume, Stack
 
 
 class Registration(nn.Module):
     def __init__(
         self,
-        num_levels: int,
-        num_steps: int,
-        step_size: float,
-        max_iter: int,
-        optimizer: Dict[str, Any],
-        loss: Union[Dict[str, Any], Callable],
-        auto_grad: bool,
+        num_levels: int = 3,
+        num_steps: int = 4,
+        step_size: float = 2,
+        max_iter: int = 20,
+        optimizer: Optional[Dict[str, Any]] = None,
+        loss: Optional[Union[Dict[str, Any], Callable]] = None,
     ) -> None:
         super().__init__()
         self.num_levels = num_levels
@@ -26,12 +26,14 @@ class Registration(nn.Module):
         self.num_steps = [num_steps] * self.num_levels
         self.step_sizes = [step_size * 2**level for level in range(num_levels)]
         self.max_iter = max_iter
-        self.auto_grad = auto_grad
+        self.auto_grad = False
         self._degree2rad = torch.tensor(
             [np.pi / 180, np.pi / 180, np.pi / 180, 1, 1, 1],
         ).view(1, 6)
 
         # init loss
+        if loss is None:
+            loss = {"name": "ncc", "win": None}
         if isinstance(loss, dict):
             loss_name = loss.pop("name")
             params = loss.copy()
@@ -56,6 +58,8 @@ class Registration(nn.Module):
             raise Exception("unknown loss")
 
         # init optimizer
+        if optimizer is None:
+            optimizer = {"name": "gd", "momentum": 0.1}
         if optimizer["name"] == "gd":
             if "momentum" not in optimizer:
                 optimizer["momentum"] = 0
@@ -81,7 +85,7 @@ class Registration(nn.Module):
     ) -> None:
         return
 
-    def forward(
+    def forward_tensor(
         self,
         theta: torch.Tensor,
         source: torch.Tensor,
@@ -252,25 +256,8 @@ def resample(
     return y
 
 
-class VVR(Registration):
-    def __init__(
-        self,
-        num_levels: int,
-        num_steps: int,
-        step_size: float,
-        max_iter: int,
-        optimizer: Dict,
-        loss: Union[Dict[str, Any], Callable],
-        auto_grad: bool,
-    ) -> None:
-        super().__init__(
-            num_levels, num_steps, step_size, max_iter, optimizer, loss, auto_grad
-        )
-        # self.theta_t = None
-        # self._grid = None
-        # self._grid_scale = None
-        # self._target_flat = None
-        self.trans_first = True
+class VolumeToVolumeRegistration(Registration):
+    trans_first = False  # faster convergence
 
     def update_level(
         self, theta: torch.Tensor, source: torch.Tensor, target: torch.Tensor
@@ -320,19 +307,16 @@ class VVR(Registration):
     def warp(
         self, theta: torch.Tensor, source: torch.Tensor, target: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        transforms = (
+        mat = (
             RigidTransform(self.degree2rad(theta), trans_first=self.trans_first)
             .inv()
-            .compose(self.theta_t)
             .matrix()
         )
-
         grid = torch.matmul(
-            transforms[:, :, :-1], self._grid.reshape(-1, 3, 1) + transforms[:, :, -1:]
+            mat[:, :, :-1], self._grid.reshape(-1, 3, 1) + mat[:, :, -1:]
         )
         grid = grid.reshape(1, -1, 1, 1, 3)
         warpped = F.grid_sample(source, grid * self._grid_scale, align_corners=True)
-
         return warpped.view(1, 1, -1), self._target_flat.view(1, 1, -1)
 
     def prepare(
@@ -342,53 +326,61 @@ class VVR(Registration):
         target: torch.Tensor,
         params: Dict[str, Any],
     ) -> None:
-        res_source = [
-            params["gap_source"],
-            params["res_y_source"],
-            params["res_x_source"],
-        ]
-        res_target = [
-            params["gap_target"],
-            params["res_y_target"],
-            params["res_x_target"],
-        ]
+        assert source.ndim == 5 and target.ndim == 5
+        res_source = params["res_source"]
+        res_target = params["res_target"]
         self.res = min(res_source + res_target)
         self.relative_res_source = [r / self.res for r in res_source]
         self.relative_res_target = [r / self.res for r in res_target]
-        assert len(source.shape) == 5
-        assert len(target.shape) == 5
 
-    def __call__(
+    def forward(
         self,
-        theta: torch.Tensor,
-        source: torch.Tensor,
-        target: torch.Tensor,
-        params: Dict[str, float],
-        transform_t: RigidTransform,
-        trans_first: bool,
-    ):
-        self.theta_t = transform_t
-        self.trans_first = trans_first
-        return super().__call__(theta, source, target, params)
-
-
-class SVR(Registration):
-    def __init__(
-        self,
-        num_levels: int,
-        num_steps: int,
-        step_size: float,
-        max_iter: int,
-        optimizer: Dict[str, Any],
-        loss: Union[Dict[str, Any], Callable],
-        auto_grad: bool,
-    ) -> None:
-        super().__init__(
-            num_levels, num_steps, step_size, max_iter, optimizer, loss, auto_grad
+        source: Union[Stack, Volume],
+        target: Union[Stack, Volume],
+        use_mask: bool = False,
+    ) -> Tuple[RigidTransform, torch.Tensor]:
+        if isinstance(source, Stack):
+            source = source.get_volume(copy=False)
+        if isinstance(target, Stack):
+            target = target.get_volume(copy=False)
+        params = {
+            "res_source": [
+                source.resolution_z,
+                source.resolution_y,
+                source.resolution_x,
+            ],
+            "res_target": [
+                target.resolution_z,
+                target.resolution_y,
+                target.resolution_x,
+            ],
+        }
+        theta = (
+            target.transformation.inv()
+            .compose(source.transformation)
+            .axisangle(self.trans_first)
         )
-        self.volume_mask: Optional[torch.Tensor] = None
-        self.slices_mask: Optional[torch.Tensor] = None
-        self.slices_mask_resampled: Optional[torch.Tensor] = None
+
+        if use_mask:
+            source_input = source.image * source.mask
+            target_input = target.image * target.mask
+        else:
+            source_input = source.image
+            target_input = target.image
+
+        theta, loss = self.forward_tensor(
+            theta, source_input[None, None], target_input[None, None], params
+        )
+
+        transform_out = target.transformation.compose(
+            RigidTransform(theta, trans_first=self.trans_first)
+        )
+
+        return transform_out, loss
+
+
+class SliceToVolumeRegistration(Registration):
+    trans_first = True  # due to slice_acquisition
 
     def update_level(
         self, theta: torch.Tensor, source: torch.Tensor, target: torch.Tensor
@@ -397,13 +389,16 @@ class SVR(Registration):
         source = gaussian_blur(source, sigma, truncated=4.0)
         target = gaussian_blur(target, sigma, truncated=4.0)
         target = resample(target, [1] * 2, [2**self.current_level] * 2)
-        if self.slices_mask is not None:
-            self.slices_mask_resampled = (
+        self.slices_mask_resampled = (
+            (
                 resample(
                     self.slices_mask.float(), [1] * 2, [2**self.current_level] * 2
                 )
                 > 0
             )
+            if self.slices_mask is not None
+            else None
+        )
         return source, target
 
     def prepare(
@@ -444,3 +439,97 @@ class SVR(Registration):
             False,
         )
         return warpped, slices
+
+    def forward(
+        self,
+        stack: Stack,
+        volume: Volume,
+        use_mask: bool = False,
+    ) -> Tuple[RigidTransform, torch.Tensor]:
+        eps = 1e-3
+        assert (
+            abs(volume.resolution_x - volume.resolution_y) < eps
+            and abs(volume.resolution_x - volume.resolution_z) < eps
+        ), "input volume should be isotropic!"
+        assert (
+            abs(stack.resolution_x - stack.resolution_y) < eps
+        ), "input slices should be isotropic!"
+
+        params = {"res_s": stack.resolution_x, "res_r": volume.resolution_x}
+
+        slices_transform = stack.transformation
+        volume_transform = volume.transformation
+
+        slices_transform = volume_transform.inv().compose(slices_transform)
+        theta = slices_transform.axisangle(self.trans_first)
+
+        self.volume_mask = volume.mask[None, None] if use_mask else None
+        self.slices_mask = stack.mask if use_mask else None
+
+        theta, loss = self.forward_tensor(
+            theta, volume.image[None, None], stack.slices, params
+        )
+
+        transform_out = RigidTransform(theta, trans_first=self.trans_first)
+        transform_out = volume_transform.compose(transform_out)
+
+        return transform_out, loss
+
+
+def stack_registration(
+    source_stacks: List[List[Stack]],
+    centering: bool = False,
+    args_registration: Optional[Dict] = None,
+) -> List[Stack]:
+    # stack registration
+    vvr_args: Dict[str, Any] = {
+        "num_levels": 3,
+        "num_steps": 4,
+        "step_size": 2,
+        "max_iter": 20,
+    }
+    if args_registration is not None:
+        vvr_args.update(args_registration)
+    vvr = VolumeToVolumeRegistration(**vvr_args)
+
+    target_stack = source_stacks[0][0]
+    target = target_stack.get_volume(copy=False)
+    sources = [[s.get_volume(copy=False) for s in ss] for ss in source_stacks]
+
+    n_lists = len(sources)
+    n_stacks = len(sources[0])
+
+    ts_registered: List[RigidTransform] = []
+    stacks_out: List[Stack] = []
+    for j in range(n_stacks):
+        if j == 0:
+            ts_registered.append(target.transformation)
+            stacks_out.append(target_stack)
+        else:
+            ncc_min: Union[float, torch.Tensor] = float("inf")
+            for k in range(n_lists):
+                sources[k][j].transformation = (
+                    ts_registered[0]
+                    .compose(sources[k][0].transformation.inv())
+                    .compose(sources[k][j].transformation)
+                )
+                t_cur, ncc = vvr(sources[k][j], target, use_mask=True)
+                if ncc < ncc_min:
+                    ncc_min, t_best, s_best = ncc, t_cur, source_stacks[k][j]
+            ts_registered.append(t_best)
+            stacks_out.append(s_best)
+
+    if centering:
+        t_center_ax = ts_registered[0].axisangle(trans_first=False).clone()
+        t_center_ax[..., :3] = 0
+        t_center_ax[..., 3:] *= -1
+        t_center = RigidTransform(t_center_ax)
+
+    for s, t in zip(stacks_out, ts_registered):
+        transform_init = s.init_stack_transform()
+        transform_out = t.compose(transform_init)
+        if centering:
+            transform_out = t_center.compose(transform_out)
+        s.transformation = transform_out
+
+    return stacks_out
