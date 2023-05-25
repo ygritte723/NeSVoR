@@ -118,3 +118,7 @@ htmlhelp_basename = "nesvordoc"
 # do not convert -- to long -
 html_use_smartypants = False
 smartquotes = False
+
+autodoc_default_options = {
+    "show-inheritance": True,
+}

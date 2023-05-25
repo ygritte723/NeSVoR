@@ -117,12 +117,13 @@ The 3D MR quality assessment tool uses a pretrained Tensorflow model.
 `Tensorflow <https://www.tensorflow.org/install/pip>`_ needs to be installed to enable this tool.
 Check out the orginal `repo <https://github.com/FNNDSC/pl-fetal-brain-assessment>`__ for more details.
 
-TWAI segmentation
-+++++++++++++++++
+..
+    TWAI segmentation
+    +++++++++++++++++
 
-The toolkit provides a wrapper of the TWAI segmentation algorithm for T2w fetal brain MRI. 
-You may find more detials of this method in the authors' `repo <https://github.com/LucasFidon/trustworthy-ai-fetal-brain-segmentation>`__. 
-To use this tool, you need to clone their repo and update the path in ``config.py`` (see the comment in ``config.py`` for details). 
+    The toolkit provides a wrapper of the TWAI segmentation algorithm for T2w fetal brain MRI. 
+    You may find more detials of this method in the authors' `repo <https://github.com/LucasFidon/trustworthy-ai-fetal-brain-segmentation>`__. 
+    To use this tool, you need to clone their repo and update the path in ``config.py`` (see the comment in ``config.py`` for details). 
 
 Install NeSVoR
 ^^^^^^^^^^^^^^

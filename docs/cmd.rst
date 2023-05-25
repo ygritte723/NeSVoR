@@ -15,4 +15,3 @@ The command line interface provided in NeSVoR.
    commands/segment-stack
    commands/correct-bias-field
    commands/assess
-   commands/segment-volume
