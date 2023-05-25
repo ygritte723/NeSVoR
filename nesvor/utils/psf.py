@@ -58,6 +58,11 @@ def get_PSF(
             )
         )
     elif psf_type == "sinc":
+        # psf = (
+        #     torch.sinc(grid_x / res_ratio[0])
+        #     * torch.sinc(grid_y / res_ratio[1])
+        #     * torch.exp(-0.5 * grid_z**2 / sigma_z**2)
+        # )
         psf = torch.sinc(
             torch.sqrt((grid_x / res_ratio[0]) ** 2 + (grid_y / res_ratio[1]) ** 2)
         ) ** 2 * torch.exp(-0.5 * grid_z**2 / sigma_z**2)

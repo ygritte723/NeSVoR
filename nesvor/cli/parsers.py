@@ -1033,9 +1033,9 @@ def build_command_svr(
     parser_svr = add_subcommand(
         subparsers,
         name="svr",
-        help="classical slice-to-volume reconstruction",
+        help="classical slice-to-volume registration/reconstruction",
         description=(
-            "This command implements a classical slice-to-volume reconstruction pipeline with a robust motion correction method (SVoRT). "
+            "This command implements a classical slice-to-volume registration/reconstruction pipeline with a robust motion correction method (SVoRT). "
             "It can only be applied to data with rigid motion (e.g., brain). "
         ),
         parents=[
@@ -1067,7 +1067,7 @@ def main_parser(
         description="NeSVoR: a toolkit for neural slice-to-volume reconstruction"
         if not_doc()
         else (
-            "``nesvor`` has a range of subcommands to perform preprocessing, slice-to-volume reconstruction, and analysis."
+            "`nesvor <#nesvor>`__ has a range of subcommands to perform preprocessing, slice-to-volume reconstruction, and analysis."
             " See the corresponding pages for details. "
         ),
         epilog="Run 'nesvor COMMAND --help' for more information on a command.\n\n"

@@ -25,7 +25,7 @@ def thresholding(inputs: List, threshold: float) -> List:
     for inp in inputs:
         if isinstance(inp, Stack):
             mask = inp.slices > threshold
-        elif isinstance(inp, (Image)):
+        elif isinstance(inp, Image):
             mask = inp.image > threshold
         else:
             raise ValueError(f"unknown input type: {type(inp)}")

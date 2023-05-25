@@ -1,6 +1,6 @@
 from tests import TestCaseNeSVoR
 from nesvor.svr.registration import VolumeToVolumeRegistration
-from nesvor.image.image import Volume
+from nesvor.image import Volume
 from nesvor.transform import RigidTransform
 from tests.phantom3d import phantom3d
 from nesvor.utils import ncc_loss

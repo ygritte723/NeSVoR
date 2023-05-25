@@ -45,7 +45,7 @@ def _check_resolution_and_shape(slices: List[Slice]) -> Tuple[float, float]:
         res_inplane.append(float(s.resolution_x))
         res_inplane.append(float(s.resolution_y))
         thicknesses.append(float(s.resolution_z))
-        if s.image.shape != slices[0].image.shape:
+        if s.shape != slices[0].shape:
             raise ValueError("Input data should have the same in-plane matrix size")
 
     if (

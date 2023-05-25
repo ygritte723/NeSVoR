@@ -366,7 +366,7 @@ class NeSVoR(nn.Module):
         xyz_psf = torch.randn(
             batch_size, n_samples, 3, dtype=xyz.dtype, device=xyz.device
         )
-        psf = 1
+        # psf = 1
         psf_sigma = self.psf_sigma[slice_idx][:, None]
         # transform points
         t = self.axisangle[slice_idx][:, None]
@@ -411,7 +411,8 @@ class NeSVoR(nn.Module):
         v_out = (bias * density).mean(-1)
         v_out = c * v_out
         if not self.args.no_pixel_variance:
-            var = (bias_detach * psf * var).mean(-1)
+            # var = (bias_detach * psf * var).mean(-1)
+            var = (bias_detach * var).mean(-1)
             var = c.detach() * var
             var = var**2
         if not self.args.no_slice_variance:

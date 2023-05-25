@@ -107,7 +107,7 @@ def train(slices: List[Slice], args: Namespace) -> Tuple[INR, List[Slice], Volum
         if args.debug:  # check nan grad
             for _name, _p in model.named_parameters():
                 if _p.grad is not None and not _p.grad.isfinite().all():
-                    logging.debug("iter %d: Found NaNs in the grad of %s", i, _name)
+                    logging.warning("iter %d: Found NaNs in the grad of %s", i, _name)
         scaler.step(optimizer)
         scaler.update()
         optimizer.zero_grad()

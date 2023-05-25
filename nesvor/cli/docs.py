@@ -111,9 +111,16 @@ def prepare_parser_for_sphinx(
     subparsersaction = get_subparsers_action(parser)
 
     # update epilog
-    epilog = ""
+    epilog = (
+        ".. list-table:: \n"
+        "   :widths: 30 70 \n"
+        "   :header-rows: 1 \n\n"
+        "   * - Command \n"
+        "     - Description\n"
+    )
     for subaction in subparsersaction._get_subactions():
-        epilog += f"\n  :doc:`{subaction.dest}`\n    {subaction.help}\n"
+        # epilog += f"\n:doc:`{subaction.dest}`\n    {subaction.help}\n"
+        epilog += f"   * - :doc:`{subaction.dest}`\n" f"     - {subaction.help}\n"
     parser.epilog = epilog
 
     for name, subparser in subparsersaction._name_parser_map.items():
