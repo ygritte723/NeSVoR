@@ -5,11 +5,11 @@ from typing import List, Tuple, Optional, cast
 import numpy as np
 import torch
 import torch.nn.functional as F
-from ..svr.registration import resample, stack_registration
+from ..svr.registration import stack_registration
 from ..svr.reconstruction import SRR_CG, simulate_slices
 from . import SVoRT, SVoRTv2
 from ..transform import RigidTransform
-from ..utils import get_PSF, ncc_loss
+from ..utils import get_PSF, ncc_loss, resample
 from ..image import Stack, Slice, Volume
 from .. import CHECKPOINT_DIR, SVORT_URL_DICT
 

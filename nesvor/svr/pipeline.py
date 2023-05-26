@@ -13,7 +13,7 @@ from .reconstruction import (
 )
 from ..utils import DeviceType, PathType, get_PSF
 from ..image import Volume, Slice, load_volume, load_mask, Stack
-from ..nesvor.data import PointDataset
+from ..inr.data import PointDataset
 
 
 def _initial_mask(
@@ -38,26 +38,23 @@ def _initial_mask(
     return mask, sample_mask is None
 
 
-def _check_resolution_and_shape(slices: List[Slice]) -> Tuple[float, float]:
+def _check_resolution_and_shape(slices: List[Slice]) -> List[Slice]:
     res_inplane = []
     thicknesses = []
     for s in slices:
         res_inplane.append(float(s.resolution_x))
         res_inplane.append(float(s.resolution_y))
         thicknesses.append(float(s.resolution_z))
-        if s.shape != slices[0].shape:
-            raise ValueError("Input data should have the same in-plane matrix size")
 
-    if (
-        max(res_inplane) - min(res_inplane) > 0.001
-        or max(thicknesses) - min(thicknesses) > 0.001
-    ):
-        logging.warning(
-            "The input data should be isotropic in-plane and have the same resolution and thickness!"
-        )
-    res_s = np.mean(res_inplane).item()
+    res_s = min(res_inplane)
     s_thick = np.mean(thicknesses).item()
-    return res_s, s_thick
+    slices = [s.resample((res_s, res_s, s_thick)) for s in slices]
+    slices = Stack.pad_stacks(slices)
+
+    if max(thicknesses) - min(thicknesses) > 0.001:
+        logging.warning("The input data have different thicknesses!")
+
+    return slices
 
 
 def _normalize(
@@ -95,9 +92,11 @@ def slice_to_volume_reconstruction(
     **unused
 ) -> Tuple[Volume, List[Slice], List[Slice]]:
     # check data
-    res_s, s_thick = _check_resolution_and_shape(slices)
+    slices = _check_resolution_and_shape(slices)
+    stack = Stack.cat(slices)
+    slices_mask_backup = stack.mask.clone()
 
-    # get data
+    # init volume
     volume, is_refine_mask = _initial_mask(
         slices,
         output_resolution,
@@ -106,9 +105,6 @@ def slice_to_volume_reconstruction(
         device,
     )
 
-    stack = Stack.cat(slices)
-    slices_mask_backup = stack.mask.clone()
-
     # data normalization
     stack, max_intensity, min_intensity = _normalize(stack, output_intensity_mean)
 
@@ -116,9 +112,9 @@ def slice_to_volume_reconstruction(
     psf_tensor = get_PSF(
         r_max=5,
         res_ratio=(
-            res_s / output_resolution,
-            res_s / output_resolution,
-            s_thick / output_resolution,
+            stack.resolution_x / output_resolution,
+            stack.resolution_y / output_resolution,
+            stack.thickness / output_resolution,
         ),
         device=volume.device,
         psf_type=psf,

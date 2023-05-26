@@ -1,4 +1,4 @@
-from typing import Dict, List, Any, Optional, Union, Collection, Iterable
+from typing import Dict, List, Any, Optional, Union, Collection, Iterable, Sequence
 import torch
 import torch.nn.functional as F
 import collections
@@ -34,6 +34,30 @@ def merge_args(args_old: Namespace, args_new: Namespace) -> Namespace:
     dict_new = vars(args_new)
     dict_old.update(dict_new)
     return Namespace(**dict_old)
+
+
+def resample(
+    x: torch.Tensor, res_xyz_old: Sequence, res_xyz_new: Sequence
+) -> torch.Tensor:
+    ndim = x.ndim - 2
+    assert len(res_xyz_new) == len(res_xyz_old) == ndim
+    if all(r_new == r_old for (r_new, r_old) in zip(res_xyz_new, res_xyz_old)):
+        return x
+    grids = []
+    for i in range(ndim):
+        fac = res_xyz_old[i] / res_xyz_new[i]
+        size_new = int(x.shape[-i - 1] * fac)
+        grid_max = (size_new - 1) / fac / (x.shape[-i - 1] - 1)
+        grids.append(
+            torch.linspace(
+                -grid_max, grid_max, size_new, dtype=x.dtype, device=x.device
+            )
+        )
+    grid = torch.stack(torch.meshgrid(*grids[::-1], indexing="ij")[::-1], -1)
+    y = F.grid_sample(
+        x, grid[None].expand((x.shape[0],) + (-1,) * (ndim + 1)), align_corners=True
+    )
+    return y
 
 
 def meshgrid(

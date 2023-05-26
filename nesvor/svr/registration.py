@@ -1,11 +1,11 @@
 import types
-from typing import Dict, Any, Tuple, Sequence, Callable, Union, cast, Optional, List
+from typing import Dict, Any, Tuple, Callable, Union, cast, Optional, List
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from ..transform import RigidTransform, axisangle2mat, mat_update_resolution
-from ..utils import ncc_loss, gaussian_blur, meshgrid, get_PSF
+from ..utils import ncc_loss, gaussian_blur, meshgrid, get_PSF, resample
 from ..slice_acquisition import slice_acquisition
 from ..image import Volume, Stack
 
@@ -232,28 +232,6 @@ class Registration(nn.Module):
             return self.optimizer["buf"][self.activate_idx]
         else:
             return grad
-
-
-def resample(
-    x: torch.Tensor, res_xyz_old: Sequence, res_xyz_new: Sequence
-) -> torch.Tensor:
-    ndim = x.ndim - 2
-    assert len(res_xyz_new) == len(res_xyz_old) == ndim
-    grids = []
-    for i in range(ndim):
-        fac = res_xyz_old[i] / res_xyz_new[i]
-        size_new = int(x.shape[-i - 1] * fac)
-        grid_max = (size_new - 1) / fac / (x.shape[-i - 1] - 1)
-        grids.append(
-            torch.linspace(
-                -grid_max, grid_max, size_new, dtype=x.dtype, device=x.device
-            )
-        )
-    grid = torch.stack(torch.meshgrid(*grids[::-1], indexing="ij")[::-1], -1)
-    y = F.grid_sample(
-        x, grid[None].expand((x.shape[0],) + (-1,) * (ndim + 1)), align_corners=True
-    )
-    return y
 
 
 class VolumeToVolumeRegistration(Registration):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 import os
-from typing import Dict, Optional, Union, List, Tuple
+from typing import Dict, Optional, Union, List, Tuple, Sequence, cast
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -17,7 +17,7 @@ from .image_utils import (
     load_nii_volume,
     save_nii_volume,
 )
-from ..utils import meshgrid, PathType, DeviceType
+from ..utils import meshgrid, PathType, DeviceType, resample
 
 
 class _Data(object):
@@ -89,6 +89,10 @@ class _Data(object):
     @property
     def shape(self) -> torch.Size:
         return self.data.shape
+
+    @property
+    def dtype(self) -> torch.dtype:
+        return self.data.dtype
 
     def clone(self, *, zero: bool = False, deep: bool = True) -> _Data:
         raise NotImplementedError()
@@ -215,6 +219,27 @@ class Image(_Data):
             scale_factor = intensity_mean / self.image.mean()
         self.image *= scale_factor
 
+    @staticmethod
+    def like(
+        old: Image,
+        image: Optional[torch.Tensor] = None,
+        mask: Optional[torch.Tensor] = None,
+        deep: bool = True,
+    ) -> Image:
+        if image is None:
+            image = old.image.clone() if deep else old.image
+        if mask is None:
+            mask = old.mask.clone() if deep else old.mask
+        transformation = old.transformation.clone() if deep else old.transformation
+        return old.__class__(
+            image=image,
+            mask=mask,
+            transformation=transformation,
+            resolution_x=old.resolution_x,
+            resolution_y=old.resolution_y,
+            resolution_z=old.resolution_z,
+        )
+
 
 class Slice(Image):
     def check_data(self, value) -> None:
@@ -226,6 +251,38 @@ class Slice(Image):
         return Slice(
             **self._clone_dict(zero, deep),
         )
+
+    def resample(
+        self,
+        resolution_new: Union[float, Sequence],
+    ) -> Slice:
+        if isinstance(resolution_new, float) or len(resolution_new) == 1:
+            resolution_new = [resolution_new, resolution_new]
+
+        if len(resolution_new) == 3:
+            resolution_z_new = resolution_new[-1]
+            resolution_new = resolution_new[:-1]
+        else:
+            resolution_z_new = self.resolution_z
+
+        image = resample(
+            self.image[None],
+            (self.resolution_x, self.resolution_y),
+            resolution_new,
+        )[0]
+        mask = (
+            resample(
+                self.mask[None].float(),
+                (self.resolution_x, self.resolution_y),
+                resolution_new,
+            )[0]
+            > 0
+        )
+
+        new_slice = cast(Slice, Slice.like(self, image, mask, deep=True))
+        new_slice.resolution_z = resolution_z_new
+
+        return new_slice
 
 
 class Volume(Image):
@@ -285,29 +342,6 @@ class Volume(Image):
 
     def clone(self, *, zero: bool = False, deep: bool = True) -> Volume:
         return Volume(**self._clone_dict(zero))
-
-    @staticmethod
-    def like(
-        volume: Volume,
-        image: Optional[torch.Tensor] = None,
-        mask: Optional[torch.Tensor] = None,
-        deep: bool = True,
-    ) -> Volume:
-        if image is None:
-            image = volume.image.clone() if deep else volume.image
-        if mask is None:
-            mask = volume.mask.clone() if deep else volume.mask
-        transformation = (
-            volume.transformation.clone() if deep else volume.transformation
-        )
-        return Volume(
-            image=image,
-            mask=mask,
-            transformation=transformation,
-            resolution_x=volume.resolution_x,
-            resolution_y=volume.resolution_y,
-            resolution_z=volume.resolution_z,
-        )
 
     @staticmethod
     def zeros(
@@ -495,45 +529,47 @@ class Stack(_Data):
         )
 
     @staticmethod
-    def pad_stacks(stacks: List[Stack]) -> List[Stack]:
+    def pad_stacks(stacks: List) -> List:
         size_max = max([max(s.shape[-2:]) for s in stacks])
-        stacks_pad = []
+        lists_pad = []
         for s in stacks:
             if s.shape[-1] < size_max or s.shape[-2] < size_max:
                 dx1 = (size_max - s.shape[-1]) // 2
                 dx2 = (size_max - s.shape[-1]) - dx1
                 dy1 = (size_max - s.shape[-2]) // 2
                 dy2 = (size_max - s.shape[-2]) - dy1
-                slices = F.pad(s.slices, (dx1, dx2, dy1, dy2))
+                data = F.pad(s.data, (dx1, dx2, dy1, dy2))
                 mask = F.pad(s.mask, (dx1, dx2, dy1, dy2))
             else:
-                slices = s.slices
+                data = s.data
                 mask = s.mask
-            stacks_pad.append(Stack.like(s, slices=slices, mask=mask, deep=False))
-        return stacks_pad
+            lists_pad.append(s.__class__.like(s, data, mask, deep=False))
+        return lists_pad
 
     @staticmethod
     def cat(inputs: List) -> Stack:
         data = []
         mask = []
         transformation = []
-        for inp in inputs:
+        for i, inp in enumerate(inputs):
             if isinstance(inp, Slice):
                 data.append(inp.image[None])
                 mask.append(inp.mask[None])
                 transformation.append(inp.transformation)
-                resolution_x = float(inp.resolution_x)
-                resolution_y = float(inp.resolution_y)
-                thickness = float(inp.resolution_z)
-                gap = float(inp.resolution_z)
+                if i == 0:
+                    resolution_x = float(inp.resolution_x)
+                    resolution_y = float(inp.resolution_y)
+                    thickness = float(inp.resolution_z)
+                    gap = float(inp.resolution_z)
             elif isinstance(inp, Stack):
                 data.append(inp.slices)
                 mask.append(inp.mask)
                 transformation.append(inp.transformation)
-                resolution_x = inp.resolution_x
-                resolution_y = inp.resolution_y
-                thickness = inp.thickness
-                gap = inp.gap
+                if i == 0:
+                    resolution_x = inp.resolution_x
+                    resolution_y = inp.resolution_y
+                    thickness = inp.thickness
+                    gap = inp.gap
             else:
                 raise TypeError("unkonwn type!")
 
