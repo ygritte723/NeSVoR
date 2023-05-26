@@ -110,7 +110,6 @@ def slice_to_volume_reconstruction(
 
     # define psf
     psf_tensor = get_PSF(
-        r_max=5,
         res_ratio=(
             stack.resolution_x / output_resolution,
             stack.resolution_y / output_resolution,

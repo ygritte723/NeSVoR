@@ -349,7 +349,7 @@ def _parse_stack_volume(
 
     if psf is None:
         psf = get_PSF(
-            r_max=5,
+            # r_max=5,
             res_ratio=(res_s / res_r, res_s / res_r, s_thick / res_r),
             device=volume.device,
         )

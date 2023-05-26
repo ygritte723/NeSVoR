@@ -386,7 +386,7 @@ class SliceToVolumeRegistration(Registration):
         target: torch.Tensor,
         params: Dict[str, Any],
     ) -> None:
-        self.psf = get_PSF(0, device=theta.device)
+        self.psf = torch.ones((1, 1, 1), device=theta.device, dtype=theta.dtype)
         self.res_s = params["res_s"]
         self.res_v = params["res_r"]
         assert len(source.shape) == 5

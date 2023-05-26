@@ -1,4 +1,4 @@
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Callable, Union
 import torch
 from math import log, sqrt
 from .types import DeviceType
@@ -77,3 +77,80 @@ def get_PSF(
     ].contiguous()
     psf = psf / psf.sum()
     return psf
+
+
+# class PSF:
+#     def __init__(
+#         self,
+#         func: Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor],
+#         device: DeviceType = torch.device("cpu"),
+#     ) -> None:
+#         self.func = func
+#         self.device = device
+
+#     def default_r_max(self) -> int:
+#         return 4
+
+#     def to_tensor(
+#         self,
+#         spacing: float,
+#         r_max: Optional[int],
+#         threshold: float = 1e-3,
+#     ) -> torch.Tensor:
+#         if r_max is None:
+#             r_max = self.default_r_max()
+#         x = (
+#             torch.linspace(
+#                 -r_max, r_max, 2 * r_max + 1, dtype=torch.float32, device=self.device
+#             )
+#             * spacing
+#         )
+#         grid_z, grid_y, grid_x = torch.meshgrid(x, x, x, indexing="ij")
+#         psf = self.func(grid_x, grid_y, grid_z)
+#         psf[psf.abs() < threshold * psf.abs().max()] = 0
+#         rx = int(torch.nonzero(psf.sum((0, 1)) > 0)[0, 0].item())
+#         ry = int(torch.nonzero(psf.sum((0, 2)) > 0)[0, 0].item())
+#         rz = int(torch.nonzero(psf.sum((1, 2)) > 0)[0, 0].item())
+#         psf = psf[
+#             rz : 2 * r_max + 1 - rz, ry : 2 * r_max + 1 - ry, rx : 2 * r_max + 1 - rx
+#         ].contiguous()
+#         psf = psf / psf.sum()
+#         return psf
+
+
+# class GaussianPSF(PSF):
+#     def __init__(
+#         self,
+#         sigma_x: float,
+#         sigma_y: float,
+#         sigma_z: float,
+#         device: DeviceType = torch.device("cpu"),
+#     ) -> None:
+#         self.sigma_x = sigma_x
+#         self.sigma_y = sigma_y
+#         self.sigma_z = sigma_z
+#         super().__init__(self.gaussian_func, device)
+
+#     def gaussian_func(self, x, y, z):
+#         return torch.exp(
+#             -0.5
+#             * (
+#                 (x / self.sigma_x) ** 2
+#                 + (y / self.sigma_y) ** 2
+#                 + (z / self.sigma_z) ** 2
+#             )
+#         )
+
+#     def sample(self) -> torch.Tensor:
+
+
+# class IsotropicGaussianPSF(GaussianPSF):
+#     pass
+
+
+# class AnisotropicGaussianPSF(GaussianPSF):
+#     pass
+
+
+# class SincPSF(PSF):
+#     pass
