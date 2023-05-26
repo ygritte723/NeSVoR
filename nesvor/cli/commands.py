@@ -7,8 +7,8 @@ import torch
 from typing import List, Optional, Tuple, Dict, Any
 from ..image import Stack, Slice
 from ..svort.inference import svort_predict
-from ..nesvor.train import train
-from ..nesvor.sample import sample_volume, sample_slices, override_sample_mask
+from ..inr.train import train
+from ..inr.sample import sample_volume, sample_slices, override_sample_mask
 from .io import outputs, inputs
 from ..utils import makedirs, log_args, log_result
 from ..preprocessing.masking import brain_segmentation

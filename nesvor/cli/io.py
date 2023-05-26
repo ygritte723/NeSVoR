@@ -10,7 +10,7 @@ from ..image import (
     load_stack,
     load_mask,
 )
-from ..nesvor.models import INR
+from ..inr.models import INR
 from ..utils import merge_args
 from ..preprocessing.masking.intersection import stack_intersect
 from ..preprocessing.masking.thresholding import otsu_thresholding, thresholding
