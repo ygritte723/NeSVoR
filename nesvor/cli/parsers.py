@@ -1087,7 +1087,7 @@ def main_parser(
     build_command_segment_stack(subparsers)
     build_command_correct_bias_field(subparsers)
     build_command_assess(subparsers)
-    build_command_segment_volume(subparsers)
+    # build_command_segment_volume(subparsers)
     build_command_svr(subparsers)
     return parser, subparsers
 

@@ -48,8 +48,7 @@ This package is the accumulation of the following works:
   - [Preprocessing](#preprocessing)
     - [Brain Masking](#brain-masking)
     - [Bias Field Correction](#bias-field-correction)
-    - [Stack Quality Assessment](#stack-quality-assessment)
-<!--  - [3D Brain Segmentation](#3d-brain-segmentation) -->
+    - [Stack Quality Assessment](#stack-quality-assessment) <!--  - [3D Brain Segmentation](#3d-brain-segmentation) -->
 - [Cite Our Work](#cite-our-work)
 - [Resources](#resources)
 
