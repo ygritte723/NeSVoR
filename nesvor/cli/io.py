@@ -12,8 +12,7 @@ from ..image import (
 )
 from ..inr.models import INR
 from ..utils import merge_args
-from ..preprocessing.masking.intersection import stack_intersect
-from ..preprocessing.masking.thresholding import otsu_thresholding, thresholding
+from ..preprocessing import stack_intersect, otsu_thresholding, thresholding
 
 
 def inputs(args: Namespace) -> Tuple[Dict, Namespace]:

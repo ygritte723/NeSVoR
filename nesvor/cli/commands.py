@@ -4,17 +4,19 @@ import logging
 import re
 import os
 import torch
-from typing import List, Optional, Tuple, Dict, Any
-from ..image import Stack, Slice
+from typing import List, Optional, Tuple, Dict, Any, cast
+from ..image import Stack, Slice, Volume
 from ..svort.inference import svort_predict
 from ..inr.train import train
+from ..inr.models import INR
 from ..inr.sample import sample_volume, sample_slices, override_sample_mask
 from .io import outputs, inputs
 from ..utils import makedirs, log_args, log_result
-from ..preprocessing.masking import brain_segmentation
-from ..preprocessing import bias_field, assessment
+from ..preprocessing import n4_bias_field_correction, assess, brain_segmentation
 from ..segmentation import twai
-from ..svr.pipeline import slice_to_volume_reconstruction
+from ..svr import slice_to_volume_reconstruction
+
+"base of commands"
 
 
 class Command(object):
@@ -77,6 +79,9 @@ class Command(object):
         raise NotImplementedError("The exec method for Command is not implemented.")
 
 
+"commands"
+
+
 class Reconstruct(Command):
     def check_args(self) -> None:
         # input
@@ -111,21 +116,23 @@ class Reconstruct(Command):
         if "input_stacks" in input_dict and input_dict["input_stacks"]:
             if self.args.segmentation:
                 self.new_timer("Segmentation")
-                input_dict["input_stacks"] = segment_stack(
+                input_dict["input_stacks"] = _segment_stack(
                     self.args, input_dict["input_stacks"]
                 )
             if self.args.bias_field_correction:
                 self.new_timer("Bias Field Correction")
-                input_dict["input_stacks"] = correct_bias_field(
+                input_dict["input_stacks"] = _correct_bias_field(
                     self.args, input_dict["input_stacks"]
                 )
             if self.args.metric != "none":
                 self.new_timer("Assessment")
-                input_dict["input_stacks"], assessment_results = assess(
+                input_dict["input_stacks"], _ = _assess(
                     self.args, input_dict["input_stacks"], False
                 )
             self.new_timer("Registration")
-            input_dict["input_slices"] = register(self.args, input_dict["input_stacks"])
+            input_dict["input_slices"] = _register(
+                self.args, input_dict["input_stacks"]
+            )
         elif "input_slices" in input_dict and input_dict["input_slices"]:
             pass
         else:
@@ -137,32 +144,15 @@ class Reconstruct(Command):
         self.new_timer("Reconsturction")
         model, output_slices, mask = train(input_dict["input_slices"], self.args)
         self.new_timer("Results saving")
-        if getattr(input_dict, "volume_mask", None):
-            mask = input_dict["volume_mask"]
-        mask = override_sample_mask(
-            mask,
-            self.args.sample_mask,
-            self.args.output_resolution,
-            self.args.sample_orientation,
-        )
-        output_volume = sample_volume(
+        output_volume, simulated_slices = _sample_inr(
+            self.args,
             model,
-            mask,
-            self.args.output_resolution,
-            self.args.output_psf_factor,
-            self.args.inference_batch_size,
-            self.args.n_inference_samples,
-        )
-        simulated_slices = (
-            sample_slices(
-                model,
-                output_slices,
-                mask,
-                self.args.output_psf_factor,
-                self.args.n_inference_samples,
-            )
-            if getattr(self.args, "simulated_slices", None)
-            else None
+            input_dict["volume_mask"]
+            if (getattr(input_dict, "volume_mask", None) is not None)
+            else mask,
+            output_slices,
+            getattr(self.args, "output_volume", None) is not None,
+            getattr(self.args, "simulated_slices", None) is not None,
         )
         outputs(
             {
@@ -181,19 +171,13 @@ class SampleVolume(Command):
         self.new_timer("Data loading")
         input_dict, self.args = inputs(self.args)
         self.new_timer("Volume sampling")
-        mask = override_sample_mask(
-            input_dict["mask"],
-            self.args.sample_mask,
-            self.args.output_resolution,
-            self.args.sample_orientation,
-        )
-        v = sample_volume(
+        v, _ = _sample_inr(
+            self.args,
             input_dict["model"],
-            mask,
-            self.args.output_resolution,
-            self.args.output_psf_factor,
-            self.args.inference_batch_size,
-            self.args.n_inference_samples,
+            input_dict["mask"],
+            None,
+            True,
+            False,
         )
         self.new_timer("Results saving")
         outputs({"output_volume": v}, self.args)
@@ -204,16 +188,13 @@ class SampleSlices(Command):
         self.new_timer("Data loading")
         input_dict, self.args = inputs(self.args)
         self.new_timer("Slices sampling")
-        mask = override_sample_mask(
-            input_dict["mask"],
-            self.args.sample_mask,
-        )
-        simulated_slices = sample_slices(
+        _, simulated_slices = _sample_inr(
+            self.args,
             input_dict["model"],
+            input_dict["mask"],
             input_dict["input_slices"],
-            mask,
-            self.args.output_psf_factor,
-            self.args.n_inference_samples,
+            False,
+            True,
         )
         self.new_timer("Results saving")
         outputs({"simulated_slices": simulated_slices}, self.args)
@@ -231,39 +212,9 @@ class Register(Command):
         if not ("input_stacks" in input_dict and input_dict["input_stacks"]):
             raise ValueError("No data found!")
         self.new_timer("Registration")
-        slices = register(self.args, input_dict["input_stacks"])
+        slices = _register(self.args, input_dict["input_stacks"])
         self.new_timer("Results saving")
         outputs({"output_slices": slices}, self.args)
-
-
-def register(args: argparse.Namespace, data: List[Stack]) -> List[Slice]:
-    if args.registration == "svort":
-        svort = True
-        vvr = True
-        force_vvr = False
-    elif args.registration == "svort-stack":
-        svort = True
-        vvr = True
-        force_vvr = True
-    elif args.registration == "svort-only":
-        svort = True
-        vvr = False
-        force_vvr = False
-    elif args.registration == "stack":
-        svort = False
-        vvr = True
-        force_vvr = False
-    elif args.registration == "none":
-        svort = False
-        vvr = False
-        force_vvr = False
-    else:
-        raise ValueError("Unkown registration method!")
-    force_scanner = args.scanner_space
-    slices = svort_predict(
-        data, args.device, args.svort_version, svort, vvr, force_vvr, force_scanner
-    )
-    return slices
 
 
 class SegmentStack(Command):
@@ -284,24 +235,12 @@ class SegmentStack(Command):
         if not ("input_stacks" in input_dict and input_dict["input_stacks"]):
             raise ValueError("No data found!")
         self.new_timer("Segmentation")
-        seg_stacks = segment_stack(self.args, input_dict["input_stacks"])
+        seg_stacks = _segment_stack(self.args, input_dict["input_stacks"])
         self.new_timer("Results saving")
         outputs(
             {"output_stack_masks": [stack.get_mask_volume() for stack in seg_stacks]},
             self.args,
         )
-
-
-def segment_stack(args: argparse.Namespace, data: List[Stack]) -> List[Stack]:
-    data = brain_segmentation.segment(
-        data,
-        args.device,
-        args.batch_size_seg,
-        not args.no_augmentation_seg,
-        args.dilation_radius_seg,
-        args.threshold_small_seg,
-    )
-    return data
 
 
 class CorrectBiasField(Command):
@@ -322,7 +261,7 @@ class CorrectBiasField(Command):
         if not ("input_stacks" in input_dict and input_dict["input_stacks"]):
             raise ValueError("No data found!")
         self.new_timer("Bias field correction")
-        corrected_stacks = correct_bias_field(self.args, input_dict["input_stacks"])
+        corrected_stacks = _correct_bias_field(self.args, input_dict["input_stacks"])
         self.new_timer("Results saving")
         outputs(
             {
@@ -332,14 +271,6 @@ class CorrectBiasField(Command):
             },
             self.args,
         )
-
-
-def correct_bias_field(args: argparse.Namespace, stacks: List[Stack]) -> List[Stack]:
-    n4_params = {}
-    for k in vars(args):
-        if k.endswith("_n4"):
-            n4_params[k] = getattr(args, k)
-    return bias_field.n4_bias_field_correction(stacks, n4_params)
 
 
 class Assess(Command):
@@ -352,55 +283,12 @@ class Assess(Command):
         self.new_timer("Data loading")
         input_dict, self.args = inputs(self.args)
         self.new_timer("Assessment")
-        _, results = assess(self.args, input_dict["input_stacks"], True)
+        _, results = _assess(self.args, input_dict["input_stacks"], True)
         if self.args.output_json:
             self.new_timer("Results saving")
             self.args.output_assessment = results
             outputs({}, self.args)
             log_result("Assessment results saved to %s" % self.args.output_json)
-
-
-def assess(
-    args: argparse.Namespace, stacks: List[Stack], print_results=False
-) -> Tuple[List[Stack], List[Dict[str, Any]]]:
-    filtered_stacks, results = assessment.assess(
-        stacks, args.metric, args.device, args.filter_method, args.cutoff
-    )
-    if results:
-        descending = results[0]["descending"]
-        template = "\n%15s %25s %15s %15s %15s"
-        result_log = (
-            "stack assessment results (metric = %s):" % args.metric
-            + template
-            % (
-                "stack",
-                "name",
-                "score " + "(" + ("\u2191" if descending else "\u2193") + ")",
-                "rank",
-                "",
-            )
-        )
-        for item in results:
-            name = item["name"].replace(".gz", "").replace(".nii", "")
-            name = name if len(name) <= 20 else ("..." + name[-17:])
-            result_log += template % (
-                item["input_id"],
-                name,
-                ("%1.4f" if isinstance(item["score"], float) else "%d") % item["score"],
-                item["rank"],
-                "excluded" if item["excluded"] else "",
-            )
-        if print_results:
-            log_result(result_log)
-        else:
-            logging.info(result_log)
-
-    logging.debug(
-        "Input stacks after assessment and filtering: %s",
-        [s.name for s in filtered_stacks],
-    )
-
-    return filtered_stacks, results
 
 
 class SegmentVolume(Command):
@@ -444,6 +332,146 @@ class SVR(Reconstruct):
 
 
 Svr = SVR
+
+
+"""helper functions"""
+
+
+def _segment_stack(args: argparse.Namespace, data: List[Stack]) -> List[Stack]:
+    data = brain_segmentation(
+        data,
+        args.device,
+        args.batch_size_seg,
+        not args.no_augmentation_seg,
+        args.dilation_radius_seg,
+        args.threshold_small_seg,
+    )
+    return data
+
+
+def _register(args: argparse.Namespace, data: List[Stack]) -> List[Slice]:
+    if args.registration == "svort":
+        svort = True
+        vvr = True
+        force_vvr = False
+    elif args.registration == "svort-stack":
+        svort = True
+        vvr = True
+        force_vvr = True
+    elif args.registration == "svort-only":
+        svort = True
+        vvr = False
+        force_vvr = False
+    elif args.registration == "stack":
+        svort = False
+        vvr = True
+        force_vvr = False
+    elif args.registration == "none":
+        svort = False
+        vvr = False
+        force_vvr = False
+    else:
+        raise ValueError("Unkown registration method!")
+    force_scanner = args.scanner_space
+    slices = svort_predict(
+        data, args.device, args.svort_version, svort, vvr, force_vvr, force_scanner
+    )
+    return slices
+
+
+def _correct_bias_field(args: argparse.Namespace, stacks: List[Stack]) -> List[Stack]:
+    n4_params = {}
+    for k in vars(args):
+        if k.endswith("_n4"):
+            n4_params[k] = getattr(args, k)
+    return n4_bias_field_correction(stacks, n4_params)
+
+
+def _assess(
+    args: argparse.Namespace, stacks: List[Stack], print_results=False
+) -> Tuple[List[Stack], List[Dict[str, Any]]]:
+    filtered_stacks, results = assess(
+        stacks, args.metric, args.device, args.filter_method, args.cutoff
+    )
+    if results:
+        descending = results[0]["descending"]
+        template = "\n%15s %25s %15s %15s %15s"
+        result_log = (
+            "stack assessment results (metric = %s):" % args.metric
+            + template
+            % (
+                "stack",
+                "name",
+                "score " + "(" + ("\u2191" if descending else "\u2193") + ")",
+                "rank",
+                "",
+            )
+        )
+        for item in results:
+            name = item["name"].replace(".gz", "").replace(".nii", "")
+            name = name if len(name) <= 20 else ("..." + name[-17:])
+            result_log += template % (
+                item["input_id"],
+                name,
+                ("%1.4f" if isinstance(item["score"], float) else "%d") % item["score"],
+                item["rank"],
+                "excluded" if item["excluded"] else "",
+            )
+        if print_results:
+            log_result(result_log)
+        else:
+            logging.info(result_log)
+
+    logging.debug(
+        "Input stacks after assessment and filtering: %s",
+        [s.name for s in filtered_stacks],
+    )
+
+    return filtered_stacks, results
+
+
+def _sample_inr(
+    args: argparse.Namespace,
+    model: INR,
+    mask: Volume,
+    slices_template: Optional[List[Slice]] = None,
+    return_volume=False,
+    return_slices=False,
+) -> Tuple[Optional[Volume], Optional[List[Slice]]]:
+    if return_slices:
+        assert slices_template is not None, "slices tempalte can not be None!"
+
+    mask = override_sample_mask(
+        mask,
+        getattr(args, "sample_mask", None),
+        getattr(args, "output_resolution", None),
+        getattr(args, "sample_orientation", None),
+    )
+
+    output_volume = (
+        sample_volume(
+            model,
+            mask,
+            args.output_resolution * args.output_psf_factor,
+            args.inference_batch_size,
+            args.n_inference_samples,
+        )
+        if return_volume
+        else None
+    )
+
+    simulated_slices = (
+        sample_slices(
+            model,
+            cast(List[Slice], slices_template),
+            mask,
+            args.output_psf_factor,
+            args.n_inference_samples,
+        )
+        if return_slices
+        else None
+    )
+    return output_volume, simulated_slices
 
 
 """warnings and checks"""

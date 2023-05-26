@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Callable, Dict, Optional, Tuple, Union, cast
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -80,26 +80,7 @@ def psf_reconstruction(
         equalize=True,
     )[0, 0]
 
-    return Volume.like(volume, v, m, deep=False)
-
-
-# def psf_reconstruction(
-#     transforms: torch.Tensor,
-#     slices: torch.Tensor,
-#     slices_mask: Optional[torch.Tensor],
-#     vol_mask: Optional[torch.Tensor],
-#     params: Dict,
-# ) -> torch.Tensor:
-#     return slice_acquisition_adjoint(
-#         transforms,
-#         params["psf"],
-#         slices,
-#         slices_mask,
-#         vol_mask,
-#         params["volume_shape"],
-#         params["res_s"] / params["res_r"],
-#         equalize=True,
-#     )
+    return cast(Volume, Volume.like(volume, v, m, deep=False))
 
 
 class SRR_CG(nn.Module):
@@ -175,7 +156,7 @@ class SRR_CG(nn.Module):
         if self.output_relu:
             x = F.relu(x, True)
 
-        return Volume.like(volume, image=x[0, 0], deep=False)
+        return cast(Volume, Volume.like(volume, image=x[0, 0], deep=False))
 
     def A(
         self,
@@ -308,7 +289,7 @@ def srr_update(
         g *= cmap_mask
     reconstructed.add_(g, alpha=alpha * beta)
     reconstructed = F.relu(reconstructed, True)
-    return Volume.like(v, reconstructed[0, 0], deep=False)
+    return cast(Volume, Volume.like(v, reconstructed[0, 0], deep=False))
 
 
 def simulate_slices(

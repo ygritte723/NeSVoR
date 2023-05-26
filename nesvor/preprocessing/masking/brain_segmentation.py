@@ -186,7 +186,7 @@ def _segment(
     return seg_all
 
 
-def segment(
+def brain_segmentation(
     stacks: List[Stack],
     device,
     batch_size: int,

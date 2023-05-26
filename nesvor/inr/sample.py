@@ -39,8 +39,7 @@ def override_sample_mask(
 def sample_volume(
     model: INR,
     mask: Volume,
-    output_resolution: float,
-    output_psf_factor: float = 1.0,
+    psf_resolution: float,
     batch_size: int = 1024,
     n_samples: int = 128,
 ) -> Volume:
@@ -49,7 +48,7 @@ def sample_volume(
     img.image[img.mask] = sample_points(
         model,
         img.xyz_masked,
-        output_resolution * output_psf_factor,
+        psf_resolution,
         batch_size,
         n_samples,
     )
