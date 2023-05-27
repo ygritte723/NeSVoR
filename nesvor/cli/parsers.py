@@ -534,19 +534,19 @@ def build_parser_segmentation(optional: bool = False) -> argparse.ArgumentParser
     parser.add_argument(
         "--batch-size-seg",
         type=int,
-        default=64,
-        help="batch size for segmentation",
+        default=16,
+        help="Batch size for segmentation",
     )
     parser.add_argument(
         "--no-augmentation-seg",
         action="store_true",
-        help="disable inference data augmentation in segmentation",
+        help="Disable inference data augmentation in segmentation",
     )
     parser.add_argument(
         "--dilation-radius-seg",
         type=float,
         default=1.0,
-        help="dilation radius for segmentation mask in millimeter.",
+        help="Dilation radius for segmentation mask in millimeter.",
     )
     parser.add_argument(
         "--threshold-small-seg",
@@ -673,6 +673,14 @@ def build_parser_assessment(**kwargs) -> argparse.ArgumentParser:
         help=rst(
             "The cutoff value for filtering, i.e., the value ``C`` in `--filter-method <#filter-method>`__"
         ),
+    )
+    parser.add_argument(
+        "--batch-size-assess", type=int, default=8, help="Batch size for IQA network"
+    )
+    parser.add_argument(
+        "--no-augmentation-assess",
+        action="store_true",
+        help="Disable inference data augmentation in IQA network",
     )
     update_defaults(_parser, **kwargs)
     return _parser

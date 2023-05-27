@@ -3,10 +3,15 @@ import numpy as np
 from ...image import Stack
 from . import motion_estimation
 from . import iqa
+from ...utils import DeviceType
 
 
 def compute_metric(
-    stacks: List[Stack], metric: str, device
+    stacks: List[Stack],
+    metric: str,
+    batch_size: int,
+    augmentation: bool,
+    device: DeviceType,
 ) -> Tuple[List[float], bool]:
     descending = True
     if metric == "ncc":
@@ -25,9 +30,11 @@ def compute_metric(
             for stack in stacks
         ]
     elif metric == "iqa2d":
-        scores = iqa.iqa2d(stacks, device)
+        scores = iqa.iqa2d(
+            stacks, device, batch_size=batch_size, augmentation=augmentation
+        )
     elif metric == "iqa3d":
-        scores = iqa.iqa3d(stacks)
+        scores = iqa.iqa3d(stacks, batch_size=batch_size, augmentation=augmentation)
     else:
         raise ValueError("unkown metric for stack assessment")
 
@@ -71,12 +78,20 @@ def sort_and_filter(
 
 
 def assess(
-    stacks: List[Stack], metric: str, device, filter_method: str, cutoff: float
+    stacks: List[Stack],
+    metric: str,
+    filter_method: str,
+    cutoff: float,
+    batch_size: int,
+    augmentation: bool,
+    device: DeviceType,
 ) -> Tuple[List[Stack], List[Dict]]:
     if metric == "none":
         return stacks, []
 
-    scores, descending = compute_metric(stacks, metric, device)
+    scores, descending = compute_metric(
+        stacks, metric, batch_size, augmentation, device
+    )
     filtered_stacks, ranks, excludeds = sort_and_filter(
         stacks, scores, descending, filter_method, cutoff
     )

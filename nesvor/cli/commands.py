@@ -391,7 +391,13 @@ def _assess(
     args: argparse.Namespace, stacks: List[Stack], print_results=False
 ) -> Tuple[List[Stack], List[Dict[str, Any]]]:
     filtered_stacks, results = assess(
-        stacks, args.metric, args.device, args.filter_method, args.cutoff
+        stacks,
+        args.metric,
+        args.filter_method,
+        args.cutoff,
+        args.batch_size_assess,
+        not args.no_augmentation_assess,
+        args.device,
     )
     if results:
         descending = results[0]["descending"]
