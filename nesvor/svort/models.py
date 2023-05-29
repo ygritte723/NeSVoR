@@ -187,7 +187,7 @@ class SVoRTv2(nn.Module):
             transforms.matrix(), stacks.shape[-1], stacks.shape[-2], params["res_s"]
         )
         volume = None
-        mask_stacks = None
+        mask_stacks = stacks > 0
 
         for i in range(self.n_iter):
             svrnet = self.svrnet2 if i else self.svrnet1
@@ -219,7 +219,13 @@ class SVoRTv2(nn.Module):
                 )
             if self.iqa:
                 volume = self.srr(
-                    mat, stacks, volume, params, iqa_score.view(-1, 1, 1, 1)
+                    mat,
+                    stacks,
+                    volume,
+                    params,
+                    iqa_score.view(-1, 1, 1, 1),
+                    mask_stacks,
+                    None,
                 )
                 self.iqa_score = iqa_score.detach()
             volumes.append(volume)
@@ -260,11 +266,12 @@ class SRRtransformer(nn.Module):
         self.fc = nn.Linear(d_model, d_out)
 
     def forward(self, theta, transforms, slices, volume, params, idx):
+        slices_mask = slices > 0
         slices_est = slice_acquisition(
             transforms,
             volume,
             None,
-            None,
+            slices_mask,
             params["psf"],
             params["slice_shape"],
             params["res_s"] / params["res_r"],
@@ -279,7 +286,9 @@ class SRRtransformer(nn.Module):
         x = self.fc(x)
         x = F.softmax(x, dim=0) * x.shape[0]
         x = torch.clamp(x, max=3.0)
-        volume = self.srr(transforms, slices, volume, params, x.view(-1, 1, 1, 1))
+        volume = self.srr(
+            transforms, slices, volume, params, x.view(-1, 1, 1, 1), slices_mask, None
+        )
         return volume, x
 
 
@@ -493,9 +502,11 @@ class SRR(nn.Module):
         volume: torch.Tensor,
         params: Dict,
         p: Optional[torch.Tensor] = None,
+        slices_mask: Optional[torch.Tensor] = None,
+        vol_mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        At = lambda x: self.At(transforms, x, params)
-        AtA = lambda x: self.AtA(transforms, x, p, params)
+        At = lambda x: self.At(transforms, x, params, slices_mask, vol_mask)
+        AtA = lambda x: self.AtA(transforms, x, p, params, slices_mask, vol_mask)
 
         b = At(slices * p if p is not None else slices)
         volume = cg(AtA, b, volume, self.n_iter, self.tol)
@@ -510,12 +521,14 @@ class SRR(nn.Module):
         transforms: torch.Tensor,
         x: torch.Tensor,
         params: Dict,
+        slices_mask: Optional[torch.Tensor] = None,
+        vol_mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         return slice_acquisition(
             transforms,
             x,
-            None,
-            None,
+            vol_mask,
+            slices_mask,
             params["psf"],
             params["slice_shape"],
             params["res_s"] / params["res_r"],
@@ -528,13 +541,15 @@ class SRR(nn.Module):
         transforms: torch.Tensor,
         x: torch.Tensor,
         params: Dict,
+        slices_mask: Optional[torch.Tensor] = None,
+        vol_mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         return slice_acquisition_adjoint(
             transforms,
             params["psf"],
             x,
-            None,
-            None,
+            slices_mask,
+            vol_mask,
             params["volume_shape"],
             params["res_s"] / params["res_r"],
             False,
@@ -547,9 +562,11 @@ class SRR(nn.Module):
         x: torch.Tensor,
         p: Optional[torch.Tensor],
         params: Dict,
+        slices_mask: Optional[torch.Tensor] = None,
+        vol_mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        slices = self.A(transforms, x, params)
+        slices = self.A(transforms, x, params, slices_mask, vol_mask)
         if p is not None:
             slices = slices * p
-        vol = self.At(transforms, slices, params)
+        vol = self.At(transforms, slices, params, slices_mask, vol_mask)
         return vol
