@@ -75,6 +75,16 @@ class Command(object):
         self.exec()
         self.new_timer()
 
+        if "cuda" in str(self.args.device):
+            logging.debug(
+                "Max GPU memory allocated = %.3f GB",
+                torch.cuda.max_memory_allocated(self.args.device) / (1024**3),
+            )
+            logging.debug(
+                "Max GPU memory reserved = %.3f GB",
+                torch.cuda.max_memory_reserved(self.args.device) / (1024**3),
+            )
+
     def exec(self) -> None:
         raise NotImplementedError("The exec method for Command is not implemented.")
 
