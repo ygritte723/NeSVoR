@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Sequence
 import logging
 from torch.autograd import Function
 import torch
@@ -180,7 +180,7 @@ def slice_acquisition(
     vol_mask: Optional[torch.Tensor],
     slices_mask: Optional[torch.Tensor],
     psf: torch.Tensor,
-    slice_shape: Tuple[int],
+    slice_shape: Sequence,
     res_slice: float,
     need_weight: bool,
     interp_psf: bool,
@@ -220,7 +220,7 @@ def slice_acquisition_adjoint(
     slices: torch.Tensor,
     slices_mask: Optional[torch.Tensor],
     vol_mask: Optional[torch.Tensor],
-    vol_shape: Tuple[int],
+    vol_shape: Sequence,
     res_slice: float,
     interp_psf: bool,
     equalize: bool,

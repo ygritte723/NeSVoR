@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple, cast
+from typing import Optional, cast, Sequence
 import logging
 import torch
 import torch.nn.functional as F
@@ -145,10 +145,11 @@ def slice_acquisition_torch(
     vol_mask: Optional[torch.Tensor],
     slices_mask: Optional[torch.Tensor],
     psf: torch.Tensor,
-    slice_shape: Tuple[int],
+    slice_shape: Sequence,
     res_slice: float,
     need_weight: bool,
 ):
+    slice_shape = tuple(slice_shape)
     global BATCH_SIZE
     if psf.numel() == 1 and need_weight == False:
         return slice_acquisition_no_psf_torch(
@@ -208,10 +209,11 @@ def slice_acquisition_adjoint_torch(
     slices: torch.Tensor,
     slices_mask: Optional[torch.Tensor],
     vol_mask: Optional[torch.Tensor],
-    vol_shape: Tuple[int],
+    vol_shape: Sequence,
     res_slice: float,
     equalize: bool,
 ):
+    vol_shape = tuple(vol_shape)
     global BATCH_SIZE
     if slices_mask is not None:
         slices = slices * slices_mask
@@ -273,9 +275,10 @@ def slice_acquisition_no_psf_torch(
     vol: torch.Tensor,
     vol_mask: Optional[torch.Tensor],
     slices_mask: Optional[torch.Tensor],
-    slice_shape: Tuple[int],
+    slice_shape: Sequence,
     res_slice: float,
 ) -> torch.Tensor:
+    slice_shape = tuple(slice_shape)
     device = transforms.device
     _slice = torch.ones((1,) + slice_shape, dtype=torch.bool, device=device)
     slice_xyz = Slice(_slice, _slice, resolution_x=res_slice).xyz_masked_untransformed

@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from ..transform import RigidTransform, axisangle2mat, mat_update_resolution
-from ..utils import ncc_loss, gaussian_blur, meshgrid, get_PSF, resample
+from ..utils import ncc_loss, gaussian_blur, meshgrid, resample
 from ..slice_acquisition import slice_acquisition
 from ..image import Volume, Stack
 
@@ -157,7 +157,7 @@ class Registration(nn.Module):
                 step = self.optimizer_step(grad) * -step_size
                 theta_a.add_(step)
                 loss_new = self.evaluate(theta_a, source_a, target_a)
-                idx_new = loss_new < loss
+                idx_new = loss_new + 1e-4 < loss
                 self.activate_idx[self.activate_idx.clone()] = idx_new
                 if not torch.any(self.activate_idx):
                     break
@@ -251,10 +251,10 @@ class VolumeToVolumeRegistration(Registration):
 
         source = resample(
             source, self.relative_res_source[::-1], [2**self.current_level] * 3
-        )  # self.resample(source)
+        )
         target = resample(
             target, self.relative_res_target[::-1], [2**self.current_level] * 3
-        )  # self.resample(target)
+        )
 
         res_new = self.res * (2**self.current_level)
         mask = (target > 0).view(-1)
