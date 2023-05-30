@@ -1,13 +1,22 @@
 from argparse import Namespace
 from math import log2
-from typing import Optional, Dict, Any, Union, TYPE_CHECKING
+from typing import Optional, Dict, Any, Union, TYPE_CHECKING, Tuple
+import logging
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-import tinycudann as tcnn
+from .hash_grid_torch import HashEmbedder
 from ..transform import RigidTransform, ax_transform_points, mat_transform_points
 from ..utils import resolution2sigma
-import logging
+
+USE_TORCH = False
+
+if not USE_TORCH:
+    try:
+        import tinycudann as tcnn
+    except:
+        logging.warning("Fail to load tinycudann. Will use pytorch implementation.")
+        USE_TORCH = True
 
 
 # key for loss/regularization
@@ -21,25 +30,29 @@ D_REG = "deformReg"
 
 
 def build_encoding(**config):
-    n_input_dims = config.pop("n_input_dims")
-    dtype = config.pop("dtype")
-    try:
-        encoding = tcnn.Encoding(
-            n_input_dims=n_input_dims, encoding_config=config, dtype=dtype
-        )
-    except RuntimeError as e:
-        if "TCNN was not compiled with half-precision support" in str(e):
-            logging.error(
-                "TCNN was not compiled with half-precision support! "
-                "Try using --single-precision in the nesvor command! "
+    if USE_TORCH:
+        encoding = HashEmbedder(**config)
+    else:
+        n_input_dims = config.pop("n_input_dims")
+        dtype = config.pop("dtype")
+        try:
+            encoding = tcnn.Encoding(
+                n_input_dims=n_input_dims, encoding_config=config, dtype=dtype
             )
-        raise e
+        except RuntimeError as e:
+            if "TCNN was not compiled with half-precision support" in str(e):
+                logging.error(
+                    "TCNN was not compiled with half-precision support! "
+                    "Try using --single-precision in the nesvor command! "
+                )
+            raise e
     return encoding
 
 
 def build_network(**config):
     dtype = config.pop("dtype")
-    if dtype == torch.float16:
+    assert dtype == torch.float16 or dtype == torch.float32
+    if dtype == torch.float16 and not USE_TORCH:
         return tcnn.Network(
             n_input_dims=config["n_input_dims"],
             n_output_dims=config["n_output_dims"],
@@ -51,7 +64,7 @@ def build_network(**config):
                 "n_hidden_layers": config["n_hidden_layers"],
             },
         )
-    elif dtype == torch.float32:
+    else:
         activation = (
             None
             if config["activation"] == "None"
@@ -77,13 +90,15 @@ def build_network(**config):
         if output_activation is not None:
             models.append(output_activation())
         return nn.Sequential(*models)
-    else:
-        raise ValueError("unknown dtype")
 
 
 def compute_resolution_nlevel(
-    bounding_box, coarsest_resolution, finest_resolution, level_scale, spatial_scaling
-):
+    bounding_box: torch.Tensor,
+    coarsest_resolution: float,
+    finest_resolution: float,
+    level_scale: float,
+    spatial_scaling: float,
+) -> Tuple[int, int]:
     base_resolution = (
         (
             (bounding_box[1] - bounding_box[0]).max()
@@ -109,7 +124,7 @@ def compute_resolution_nlevel(
         .int()
         .item()
     )
-    return base_resolution, n_levels
+    return int(base_resolution), int(n_levels)
 
 
 class INR(nn.Module):
@@ -281,6 +296,9 @@ class NeSVoR(nn.Module):
         args: Namespace,
     ) -> None:
         super().__init__()
+        if "cpu" in str(args.device):  # CPU mode
+            global USE_TORCH
+            USE_TORCH = True
         self.spatial_scaling = spatial_scaling
         self.args = args
         self.n_slices = 0
