@@ -13,8 +13,11 @@ from ..transform import (
 )
 from .attention import TransformerEncoder, PositionalEncoding, ResNet
 from ..slice_acquisition import slice_acquisition, slice_acquisition_adjoint
+from ..utils import gaussian_blur
 
 # main models
+
+USE_MASK = True
 
 
 class SVoRT(nn.Module):
@@ -80,8 +83,7 @@ class SVoRT(nn.Module):
             transforms.matrix(), stacks.shape[-1], stacks.shape[-2], params["res_s"]
         )
         volume = None
-
-        mask_stacks = None
+        mask_stacks = gaussian_blur(stacks, 1.0, 3) > 0 if USE_MASK else None
 
         for i in range(self.n_iter):
             theta, attn = self.svrnet[i](
@@ -101,7 +103,6 @@ class SVoRT(nn.Module):
                 mat = mat_update_resolution(
                     _trans.matrix().detach(), 1, params["res_r"]
                 )
-                # volume = psf_reconstruction(mat, stacks, mask_stacks, None, params)
                 volume = slice_acquisition_adjoint(
                     mat,
                     params["psf"],
@@ -187,7 +188,7 @@ class SVoRTv2(nn.Module):
             transforms.matrix(), stacks.shape[-1], stacks.shape[-2], params["res_s"]
         )
         volume = None
-        mask_stacks = stacks > 0
+        mask_stacks = gaussian_blur(stacks, 1.0, 3) > 0 if USE_MASK else None
 
         for i in range(self.n_iter):
             svrnet = self.svrnet2 if i else self.svrnet1
@@ -205,7 +206,6 @@ class SVoRTv2(nn.Module):
                 mat = mat_update_resolution(
                     _trans.matrix().detach(), 1, params["res_r"]
                 )
-                # volume = psf_reconstruction(mat, stacks, mask_stacks, None, params)
                 volume = slice_acquisition_adjoint(
                     mat,
                     params["psf"],
@@ -266,12 +266,12 @@ class SRRtransformer(nn.Module):
         self.fc = nn.Linear(d_model, d_out)
 
     def forward(self, theta, transforms, slices, volume, params, idx):
-        slices_mask = slices > 0
+        mask_stacks = gaussian_blur(slices, 1.0, 3) > 0 if USE_MASK else None
         slices_est = slice_acquisition(
             transforms,
             volume,
             None,
-            slices_mask,
+            mask_stacks,
             params["psf"],
             params["slice_shape"],
             params["res_s"] / params["res_r"],
@@ -287,7 +287,7 @@ class SRRtransformer(nn.Module):
         x = F.softmax(x, dim=0) * x.shape[0]
         x = torch.clamp(x, max=3.0)
         volume = self.srr(
-            transforms, slices, volume, params, x.view(-1, 1, 1, 1), slices_mask, None
+            transforms, slices, volume, params, x.view(-1, 1, 1, 1), mask_stacks, None
         )
         return volume, x
 
