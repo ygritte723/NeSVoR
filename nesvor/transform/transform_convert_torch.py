@@ -6,7 +6,7 @@ TRANSFORM_EPS = 1e-6
 def axisangle2mat_torch(axisangle: torch.Tensor) -> torch.Tensor:
     theta2 = axisangle[:, :3].pow(2).sum(-1)
     small_angle = theta2 <= TRANSFORM_EPS
-    theta = theta2.sqrt()
+    theta = torch.clamp(theta2, min=TRANSFORM_EPS).sqrt()
     ang_x = axisangle[:, 0] / theta
     ang_y = axisangle[:, 1] / theta
     ang_z = axisangle[:, 2] / theta
@@ -67,28 +67,28 @@ def mat2axisangle_torch(mat: torch.Tensor) -> torch.Tensor:
     mask_d0_nd1 = r00 < -r11
 
     # case 1
-    s1 = 2 * torch.sqrt(r00 + r11 + r22 + 1)
+    s1 = 2 * torch.sqrt(torch.clamp(r00 + r11 + r22 + 1, min=TRANSFORM_EPS))
     w1 = s1 / 4
     x1 = (r21 - r12) / s1
     y1 = (r02 - r20) / s1
     z1 = (r10 - r01) / s1
 
     # case 2
-    s2 = 2 * torch.sqrt(r00 - r11 - r22 + 1)
+    s2 = 2 * torch.sqrt(torch.clamp(r00 - r11 - r22 + 1, min=TRANSFORM_EPS))
     w2 = (r21 - r12) / s2
     x2 = s2 / 4
     y2 = (r01 + r10) / s2
     z2 = (r02 + r20) / s2
 
     # case 3
-    s3 = 2 * torch.sqrt(r11 - r00 - r22 + 1)
+    s3 = 2 * torch.sqrt(torch.clamp(r11 - r00 - r22 + 1, min=TRANSFORM_EPS))
     w3 = (r02 - r20) / s3
     x3 = (r01 + r10) / s3
     y3 = s3 / 4
     z3 = (r12 + r21) / s3
 
     # case 4
-    s4 = 2 * torch.sqrt(r22 - r00 - r11 + 1)
+    s4 = 2 * torch.sqrt(torch.clamp(r22 - r00 - r11 + 1, min=TRANSFORM_EPS))
     w4 = (r10 - r01) / s4
     x4 = (r02 + r20) / s4
     y4 = (r12 + r21) / s4
@@ -110,7 +110,7 @@ def mat2axisangle_torch(mat: torch.Tensor) -> torch.Tensor:
     w = torch.where(neg_w, -w, w)
 
     tmp = x * x + y * y + z * z
-    si = torch.sqrt(tmp)
+    si = torch.sqrt(torch.clamp(tmp, min=TRANSFORM_EPS))
     theta = 2 * torch.atan2(si, w)
     fac = torch.where(tmp > TRANSFORM_EPS, theta / si, 2.0 / w)
 

@@ -3,6 +3,7 @@
 
 import sys
 import string
+import logging
 from .parsers import main_parser
 
 
@@ -27,12 +28,21 @@ def run(args) -> None:
     from . import commands
     from .. import utils
 
-    # setup
-    args.device = torch.device(args.device)
-    utils.set_seed(args.seed)
+    # setup logger
     if args.debug:
         args.verbose = 2
     utils.setup_logger(args.output_log, args.verbose)
+    # setup device
+    if args.device >= 0:
+        args.device = torch.device(args.device)
+    else:
+        args.device = torch.device("cpu")
+        logging.warning(
+            "NeSVoR is running in CPU mode. The performance will be suboptimal. Try to use a GPU instead."
+        )
+    # setup seed
+    utils.set_seed(args.seed)
+
     # execute command
     command_class = "".join(string.capwords(w) for w in args.command.split("-"))
     getattr(commands, command_class)(args).main()

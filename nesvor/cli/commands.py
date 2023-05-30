@@ -119,6 +119,13 @@ class Reconstruct(Command):
         svort_v1_warning(self.args)
         # dtype
         self.args.dtype = torch.float32 if self.args.single_precision else torch.float16
+        if "cpu" in str(self.args.device):
+            self.args.dtype = torch.float32
+            if not self.args.single_precision:
+                logging.warning(
+                    "CPU mode does not support half precision training. Will use single precision instead."
+                )
+                self.args.single_precision = True
 
     def preprocess(self) -> Dict[str, Any]:
         self.new_timer("Data loading")

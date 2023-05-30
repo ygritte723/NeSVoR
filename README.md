@@ -208,6 +208,7 @@ NeSVoR currently supports the following commands:
 
 - [`nesvor reconstruct`](#reconstruction): reconstruct a 3D volume (i.e., train a NeSVoR model) from either multiple stacks of slices (NIfTI) or a set of motion-corrected slices (the output of `register`). It can also perform multiple preprocessing steps, including brain segmentation, bias field correction, and registration.
 - [`nesvor register`](#registration-motion-correction): register stacks of slices using a pretrained SVoRT model or stack-to-stack registration.
+- [`svr`](#svr): a classical slice-to-volume registration/reconstruciton method.
 - [`nesvor sample-volume`](#sample-volume): sample a volume from a trained NeSVoR model.
 - [`nesvor sample-slices`](#sample-slices): simulate slices from a trained NeSVoR model.
 - [`nesvor segment-stack`](#brain-masking): 2D fetal brain segmentation/masking in input stacks.
