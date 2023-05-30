@@ -42,6 +42,7 @@ This package is the accumulation of the following works:
 - [Usage](#usage)
   - [Reconstruction ](#reconstruction)
   - [Registration (Motion Correction)](#registration-motion-correction)
+  - [SVR](#svr)
   - [Sampling](#sampling)
     - [Sample Volume](#sample-volume)
     - [Sample Slices](#sample-slices)
@@ -291,6 +292,12 @@ nesvor register \
 ```
 
 run `nesvor register -h` to see a full list of supported registration methods.
+
+### SVR
+
+`svr` implements a classical slice-to-volume registration/reconstruction method combined with SVoRT
+motion correction. The usage of `svr` is similar to `reconstruct`.
+`svr` currently only supports rigid motion.
 
 ### Sampling
 

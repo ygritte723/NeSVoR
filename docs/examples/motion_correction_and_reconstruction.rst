@@ -1,8 +1,8 @@
 Reconstruction and motion correction
 ====================================
 
-Reconstruction
---------------
+NeSVoR reconstruction
+-----------------------
 
 Reconstruct from mutiple stacks of slices
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -78,7 +78,7 @@ To enable deformable motion, use the flag `--deformable <../commands/reconstruct
 
 This feature is still experimental.
 
-Registration (motion correction)
+SVoRT motion correction
 --------------------------------
 
 `register <../commands/register.html>`__ takes mutiple stacks of slices as inputs, performs motion correction, 
@@ -94,3 +94,18 @@ and then saves the motion-corrected slices to a folder.
 
 The list of supported methods in `register <../commands/register.html>`__ 
 can be found `here <commands/register.html#registration>`__.
+
+
+Slice-to-volume registration/reconstruction
+----------------------------------------------
+
+`svr <../commands/svr.html>`__ implements a classical slice-to-volume registration/reconstruction method combined with SVoRT
+motion correction. THe usage of `svr <../commands/svr.html>`__ is similar to `reconstruct <../commands/reconstruct.html>`__.
+`svr <../commands/svr.html>`__ currently only supports rigid motion.
+
+.. code-block:: nesvorcommand
+
+    nesvor reconstruct \
+        --input-stacks stack-1.nii.gz ... stack-N.nii.gz \
+        --stack-masks mask-1.nii.gz ... mask-N.nii.gz \
+        --output-volume volume.nii.gz
