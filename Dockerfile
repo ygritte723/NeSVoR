@@ -2,7 +2,7 @@
 
 # source of tinycudann pytorch binding binaries.
 # See https://github.com/FNNDSC/tinycudann-docker-build
-FROM docker.io/fnndsc/tinycudacnn:isolate-python3.10.6-pytorch1.13.1-cuda11.7 as tinycudann-isolate
+FROM docker.io/fnndsc/tinycudann:isolate-python3.10.6-pytorch1.13.1-cuda11.7 as tinycudann-isolate
 
 FROM docker.io/mambaorg/micromamba:1.4-focal-cuda-11.7.1 AS dependency-installer
 
