@@ -1,10 +1,13 @@
 import argparse
 from typing import Union, Sequence, Optional, Tuple
-from .formatters import CommandHelpFormatter, MainHelpFormatter
-from .. import __version__, __url__
-from .docs import rst, not_doc, doc_mode, show_link, prepare_parser_for_sphinx
+from formatters import CommandHelpFormatter, MainHelpFormatter
+# from .. import __version__, __url__
+from docs import rst, not_doc, doc_mode, show_link, prepare_parser_for_sphinx
 
-
+# subject = "20035"
+# input_path = f"/home/xzhon54/xinliuz/imgs/input/ori/{subject}/"
+# mask_path = f"/home/xzhon54/xinliuz/imgs/input/segs/{subject}/"
+# output_path = f"/home/xzhon54/xinliuz/imgs/output/{subject}/"
 # parents parsers
 
 
@@ -245,6 +248,7 @@ def build_parser_inputs(
     no_thickness=False,
 ) -> argparse.ArgumentParser:
     """arguments related to input data"""
+
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("inputs")
     # stack input
@@ -310,6 +314,7 @@ def build_parser_inputs(
 
 def build_parser_stack_masking(*, stack_masks=True) -> argparse.ArgumentParser:
     """arguments related to ROI maksing for input stacks"""
+
     _parser = argparse.ArgumentParser(add_help=False)
     parser = _parser.add_argument_group("input stacks masking")
     if stack_masks:
@@ -1078,6 +1083,9 @@ def main_parser(
     title="commands", metavar="COMMAND", dest="command"
 ) -> Tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
     # main parser
+
+    __version__ = "0.5.0"
+    __url__ = "https://github.com/daviddmc/NeSVoR"
     parser = argparse.ArgumentParser(
         prog="nesvor",
         description="NeSVoR: a toolkit for neural slice-to-volume reconstruction"
@@ -1096,6 +1104,8 @@ def main_parser(
     )
     # commands
     subparsers = parser.add_subparsers(title=title, metavar=metavar, dest=dest)
+    # input our params and filenames
+
     build_command_reconstruct(subparsers)
     build_command_sample_volume(subparsers)
     build_command_sample_slices(subparsers)

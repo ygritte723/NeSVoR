@@ -5,16 +5,26 @@ import re
 import os
 import torch
 from typing import List, Optional, Tuple, Dict, Any, cast
-from ..image import Stack, Slice, Volume
-from ..svort.inference import svort_predict
-from ..inr.train import train
-from ..inr.models import INR
-from ..inr.sample import sample_volume, sample_slices, override_sample_mask
-from .io import outputs, inputs
-from ..utils import makedirs, log_args, log_result
-from ..preprocessing import n4_bias_field_correction, assess, brain_segmentation
-from ..segmentation import twai
-from ..svr import slice_to_volume_reconstruction
+# from ..image import Stack, Slice, Volume
+# from ..svort.inference import svort_predict
+# from ..inr.train import train
+# from ..inr.models import INR
+# from ..inr.sample import sample_volume, sample_slices, override_sample_mask
+# from .io import outputs, inputs
+# from ..utils import makedirs, log_args, log_result
+# from ..preprocessing import n4_bias_field_correction, assess, brain_segmentation
+# from ..segmentation import twai
+# from ..svr import slice_to_volume_reconstruction
+from nesvor.svort.inference import svort_predict
+from nesvor.inr.train import train
+from nesvor.inr.models import INR
+from nesvor.inr.sample import sample_volume, sample_slices, override_sample_mask
+from nesvor.cli.io import outputs, inputs
+from nesvor.utils import makedirs, log_args, log_result
+from nesvor.preprocessing import n4_bias_field_correction, assess, brain_segmentation
+from nesvor.segmentation import twai
+from nesvor.svr import slice_to_volume_reconstruction
+from nesvor.image import Stack, Slice, Volume
 
 "base of commands"
 
