@@ -4,7 +4,7 @@
 import sys
 import string
 import logging
-from parsers import main_parser
+from nesvor.cli.parsers import main_parser
 
 # Set paths for default arguments
 DEFAULT_SUBJECT = "20035"
@@ -36,6 +36,7 @@ def main() -> None:
         # print help if no args are provided
         parser.print_help(sys.stdout)
         setup_default_args()
+        # print(sys.argv)
 
     if len(sys.argv) == 2 and sys.argv[-1] in subparsers.choices:
         subparsers.choices[sys.argv[-1]].print_help(sys.stdout)
@@ -49,7 +50,7 @@ def main() -> None:
 def run(args) -> None:
     import torch
     # from . import commands
-    import commands
+    from nesvor.cli import commands
     from nesvor import utils
 
     # setup logger

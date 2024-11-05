@@ -1,11 +1,11 @@
 import argparse
 from typing import Union, Sequence, Optional, Tuple
-from formatters import CommandHelpFormatter, MainHelpFormatter
-# from .. import __version__, __url__
+from nesvor.cli.formatters import CommandHelpFormatter, MainHelpFormatter
 from docs import rst, not_doc, doc_mode, show_link, prepare_parser_for_sphinx
 
 
 
+# argument parsers
 
 def build_parser_training() -> argparse.ArgumentParser:
     """arguments related to the training of INR"""
@@ -1074,6 +1074,7 @@ def build_command_svr(
     )
     return parser_svr
 
+# main func
 
 def main_parser(
     title="commands", metavar="COMMAND", dest="command"
