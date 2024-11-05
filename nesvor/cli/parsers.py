@@ -4,11 +4,7 @@ from formatters import CommandHelpFormatter, MainHelpFormatter
 # from .. import __version__, __url__
 from docs import rst, not_doc, doc_mode, show_link, prepare_parser_for_sphinx
 
-# subject = "20035"
-# input_path = f"/home/xzhon54/xinliuz/imgs/input/ori/{subject}/"
-# mask_path = f"/home/xzhon54/xinliuz/imgs/input/segs/{subject}/"
-# output_path = f"/home/xzhon54/xinliuz/imgs/output/{subject}/"
-# parents parsers
+
 
 
 def build_parser_training() -> argparse.ArgumentParser:

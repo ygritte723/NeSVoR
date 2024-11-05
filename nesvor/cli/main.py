@@ -5,39 +5,41 @@ import sys
 import string
 import logging
 from parsers import main_parser
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
+# Set paths for default arguments
+DEFAULT_SUBJECT = "20035"
+INPUT_PATH = f"/home/xzhon54/xinliuz/imgs/input/ori/{DEFAULT_SUBJECT}/"
+MASK_PATH = f"/home/xzhon54/xinliuz/imgs/input/segs/{DEFAULT_SUBJECT}/"
+OUTPUT_PATH = f"/home/xzhon54/xinliuz/imgs/output/{DEFAULT_SUBJECT}/"
+
+
+def setup_default_args():
+    """Set default command and arguments for debugging."""
+    sys.argv.extend([
+        "reconstruct",
+        "--input-stacks", f"{INPUT_PATH}{DEFAULT_SUBJECT}_AX_T2w_fetal.nii",
+                        f"{INPUT_PATH}{DEFAULT_SUBJECT}_CORO_T2w_fetal.nii",
+                        f"{INPUT_PATH}{DEFAULT_SUBJECT}_SAG_T2w_fetal.nii",
+        "--output-volume", f"{OUTPUT_PATH}volume_m_{DEFAULT_SUBJECT}_debug.nii.gz",
+        "--bias-field-correction",
+        "--stack-masks", f"{MASK_PATH}{DEFAULT_SUBJECT}_AX_T2w_fetal_seg.nii.gz",
+                         f"{MASK_PATH}{DEFAULT_SUBJECT}_CORO_T2w_fetal_seg.nii.gz",
+                         f"{MASK_PATH}{DEFAULT_SUBJECT}_SAG_T2w_fetal_seg.nii.gz",
+        "--output-resolution", "0.8"
+    ])
+    
+    
 def main() -> None:
     parser, subparsers = main_parser()  # Initialize parser early
 
-    # print help if no args are provided
     if len(sys.argv) == 1:
+        # print help if no args are provided
         parser.print_help(sys.stdout)
-        
-        subject = "20035"
-        input_path = f"/home/xzhon54/xinliuz/imgs/input/ori/{subject}/"
-        mask_path = f"/home/xzhon54/xinliuz/imgs/input/segs/{subject}/"
-        output_path = f"/home/xzhon54/xinliuz/imgs/output/{subject}/"
+        setup_default_args()
 
-        
-        # Insert default command and arguments into sys.argv
-        sys.argv.extend([
-            "reconstruct",
-            "--input-stacks", f"{input_path}{subject}_AX_T2w_fetal.nii",
-                            f"{input_path}{subject}_CORO_T2w_fetal.nii",
-                            f"{input_path}{subject}_SAG_T2w_fetal.nii",
-            "--output-volume", f"{output_path}volume_m_{subject}_debug.nii.gz",
-            "--bias-field-correction",
-            "--stack-masks", f"{mask_path}{subject}_AX_T2w_fetal_seg.nii.gz",
-                             f"{mask_path}{subject}_CORO_T2w_fetal_seg.nii.gz",
-                             f"{mask_path}{subject}_SAG_T2w_fetal_seg.nii.gz",
-            "--output-resolution", "0.8"
-        ])
-
-    if len(sys.argv) == 2:
-        if sys.argv[-1] in subparsers.choices:
-            subparsers.choices[sys.argv[-1]].print_help(sys.stdout)
-            return
+    if len(sys.argv) == 2 and sys.argv[-1] in subparsers.choices:
+        subparsers.choices[sys.argv[-1]].print_help(sys.stdout)
+        return
     # parse args
     args = parser.parse_args()
     print('args:', args)
@@ -54,14 +56,14 @@ def run(args) -> None:
     if args.debug:
         args.verbose = 2
     utils.setup_logger(args.output_log, args.verbose)
-    # setup device
-    if args.device >= 0:
-        args.device = torch.device(args.device)
-    else:
-        args.device = torch.device("cpu")
+    
+    # Setup device
+    device = torch.device(args.device if args.device >= 0 else "cpu")
+    if device.type == "cpu":
         logging.warning(
             "NeSVoR is running in CPU mode. The performance will be suboptimal. Try to use a GPU instead."
         )
+    args.device = device
     # setup seed
     utils.set_seed(args.seed)
 
