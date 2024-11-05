@@ -70,7 +70,9 @@ def train(slices: List[Slice], args: Namespace) -> Tuple[INR, List[Slice], Volum
     decay_milestones = [int(m * args.n_iter) for m in args.milestones]
     # setup grad scalar for mixed precision training
     fp16 = not args.single_precision
-    scaler = torch.cuda.amp.GradScaler(
+#    scaler = torch.cuda.amp.GradScaler(
+    scaler = torch.amp.GradScaler(
+        'cuda',
         init_scale=1.0,
         enabled=fp16,
         growth_factor=2.0,
@@ -96,7 +98,8 @@ def train(slices: List[Slice], args: Namespace) -> Tuple[INR, List[Slice], Volum
         train_step_start = time.time()
         # forward
         batch = dataset.get_batch(args.batch_size, args.device)
-        with torch.cuda.amp.autocast(fp16):
+        # with torch.cuda.amp.autocast(fp16):
+        with torch.autocast("cuda", torch.float16):
             losses = model(**batch)
             loss = 0
             for k in losses:
