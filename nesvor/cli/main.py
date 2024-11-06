@@ -25,7 +25,8 @@ def setup_default_args():
         "--stack-masks", f"{MASK_PATH}{DEFAULT_SUBJECT}_AX_T2w_fetal_seg.nii.gz",
                          f"{MASK_PATH}{DEFAULT_SUBJECT}_CORO_T2w_fetal_seg.nii.gz",
                          f"{MASK_PATH}{DEFAULT_SUBJECT}_SAG_T2w_fetal_seg.nii.gz",
-        "--output-resolution", "0.8"
+        "--output-resolution", "0.8",
+        "--debug", 
     ])
     
     

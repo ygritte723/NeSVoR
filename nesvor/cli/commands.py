@@ -169,6 +169,7 @@ class Reconstruct(Command):
     def exec(self) -> None:
         input_dict = self.preprocess()
         self.new_timer("Reconsturction")
+        # plot input and output of every iteration
         model, output_slices, mask = train(input_dict["input_slices"], self.args)
         self.new_timer("Results saving")
         output_volume, simulated_slices = _sample_inr(
@@ -400,6 +401,7 @@ def _register(args: argparse.Namespace, data: List[Stack]) -> List[Slice]:
     else:
         raise ValueError("Unkown registration method!")
     force_scanner = args.scanner_space
+    # visualize input and output
     slices = svort_predict(
         data, args.device, args.svort_version, svort, vvr, force_vvr, force_scanner
     )
