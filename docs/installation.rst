@@ -29,16 +29,16 @@ You may run a container in an iterative way.
 
 .. code-block:: bash
 
-    docker run -it --gpus all junshenxu/nesvor:v-version-placeholder-
+    docker run -it --gpus all --ipc=host junshenxu/nesvor:v0.5.0
     nesvor -h
 
 You may also run the ``nesvor`` command directly as follows.
 
 .. code-block:: bash
 
-    docker run --rm --gpus all \
+    docker run --rm --gpus all --ipc=host \
         -v <path-to-inputs>:/incoming:ro -v <path-to-outputs>:/outgoing:rw \
-        junshenxu/nesvor:v-version-placeholder- \
+        junshenxu/nesvor:v0.5.0 \
         nesvor reconstruct \
         --input-stacks /incoming/stack-1.nii.gz ... /incoming/stack-N.nii.gz \
         --thicknesses <thick-1> ... <thick-N> \
@@ -67,7 +67,7 @@ Since the master branch might be messy sometimes, it is recommanded to clone a s
 
 .. code-block:: bash
 
-    git clone https://github.com/daviddmc/NeSVoR --branch v-version-placeholder-
+    git clone https://github.com/daviddmc/NeSVoR --branch v0.5.0
     cd NeSVoR
 
 
